@@ -4,13 +4,13 @@ export interface Candidate {
   name: string;
   electionId: string;
   platform: string;
-  party: string;
+  party: string; // Now mandatory
   imageUrl?: string;
-  voteCount: number; // Changed from optional to required, initialized to 0
+  voteCount: number;
 }
 
 export interface Election {
-  id: string;
+  id:string;
   name: string;
   startDate: string; // ISO date string
   endDate: string; // ISO date string
@@ -26,4 +26,12 @@ export interface ElectionResults {
     candidateName: string;
     voteCount: number;
   }>;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  date: string; // ISO date string
+  imageUrl?: string; // Optional image for announcement
 }

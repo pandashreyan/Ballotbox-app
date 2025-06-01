@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { Election } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, ListChecks, Users, Trash2, AlertCircle } from 'lucide-react';
+import { CalendarDays, ListChecks, Users, Trash2, AlertCircle, Share2 } from 'lucide-react'; // Added Share2
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -86,7 +86,7 @@ export function ElectionCard({ election }: ElectionCardProps) {
         title: "Election Deleted",
         description: `Election "${election.name}" has been successfully deleted.`,
       });
-      router.refresh(); // Refresh the page to update the list of elections
+      router.refresh(); 
     } catch (error: any) {
       toast({
         title: "Error Deleting Election",
@@ -98,12 +98,29 @@ export function ElectionCard({ election }: ElectionCardProps) {
     }
   };
 
+  const handleShare = () => {
+    if (!isClient) return; // Ensure window is available
+    const electionUrl = `${window.location.origin}/elections/${election.id}`;
+    const shareText = `Check out the election: ${election.name} on BallotBox!`;
+    const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(electionUrl)}&text=${encodeURIComponent(shareText)}`;
+    window.open(twitterShareUrl, '_blank', 'noopener,noreferrer');
+    toast({ title: "Share on Twitter", description: "Opening Twitter in a new tab..." });
+  };
+
   return (
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
       <CardHeader className="pb-4">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-xl font-headline mb-1">{election.name}</CardTitle>
-          {isClient && displayStatus ? displayStatus.badge : <Badge variant="outline">Loading status...</Badge>}
+        <div className="flex justify-between items-start mb-1">
+          <CardTitle className="text-xl font-headline ">{election.name}</CardTitle>
+          <div className="flex items-center gap-1">
+            {isClient && displayStatus ? displayStatus.badge : <Badge variant="outline">Loading...</Badge>}
+             {isClient && ( // Only render share button on client
+              <Button variant="ghost" size="icon" onClick={handleShare} className="h-7 w-7 text-muted-foreground hover:text-primary">
+                <Share2 className="h-4 w-4" />
+                <span className="sr-only">Share Election</span>
+              </Button>
+            )}
+          </div>
         </div>
         <CardDescription className="flex items-center text-sm text-muted-foreground">
           <CalendarDays className="mr-2 h-4 w-4" />
@@ -111,7 +128,7 @@ export function ElectionCard({ election }: ElectionCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        <p className="text-sm text-foreground/80 mb-3">{election.description}</p>
+        <p className="text-sm text-foreground/80 mb-3 line-clamp-3">{election.description}</p>
         <div className="flex items-center text-sm text-muted-foreground">
           <Users className="mr-2 h-4 w-4" />
           {election.candidates.length} Candidate{election.candidates.length === 1 ? '' : 's'}

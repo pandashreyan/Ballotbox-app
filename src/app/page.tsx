@@ -1,10 +1,14 @@
 
 import { ElectionCard } from '@/components/ElectionCard';
-import type { Election } from '@/lib/types';
+import type { Election, Announcement } from '@/lib/types'; // Added Announcement
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Megaphone } from 'lucide-react'; // Added Megaphone
 import { PageActions } from '@/components/PageActions';
+import { mockAnnouncements } from '@/lib/mockData'; // Import mock announcements
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // For Announcement card
+import Image from 'next/image'; // For Announcement image
+import { Separator } from '@/components/ui/separator';
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -40,7 +44,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
-            party: candidate.party, // Party is now required
+            party: candidate.party, 
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
             electionId: electionIdString,
@@ -56,9 +60,16 @@ async function getElections(): Promise<Election[] | { error: string }> {
   }
 }
 
+// Function to get and sort announcements (mock for now)
+async function getAnnouncements(): Promise<Announcement[]> {
+  // In a real app, fetch from a database
+  return mockAnnouncements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
 
 export default async function HomePage() {
   const electionsResult = await getElections();
+  const announcements = await getAnnouncements();
 
   if (typeof electionsResult === 'object' && 'error' in electionsResult) {
     return (
@@ -89,7 +100,7 @@ export default async function HomePage() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12"> {/* Increased spacing */}
       <section className="text-center py-8">
         <h1 className="text-4xl font-headline font-bold text-primary mb-4">
           Welcome to BallotBox
@@ -114,6 +125,47 @@ export default async function HomePage() {
           </div>
         ) : (
           <p className="text-muted-foreground">No elections available at the moment. Please check back later or create a new one.</p>
+        )}
+      </section>
+
+      <Separator />
+
+      <section>
+        <div className="flex items-center mb-6 pb-2 border-b-2 border-accent">
+          <Megaphone className="mr-3 h-8 w-8 text-accent" />
+          <h2 className="text-3xl font-headline font-semibold">
+            Latest Announcements
+          </h2>
+        </div>
+        {announcements.length > 0 ? (
+          <div className="space-y-6">
+            {announcements.map((announcement) => (
+              <Card key={announcement.id} className="shadow-md hover:shadow-lg transition-shadow duration-200">
+                <CardHeader>
+                  {announcement.imageUrl && (
+                    <div className="relative w-full h-48 mb-4 rounded-t-md overflow-hidden">
+                      <Image 
+                        src={announcement.imageUrl} 
+                        alt={announcement.title} 
+                        layout="fill" 
+                        objectFit="cover"
+                        data-ai-hint="announcement event"
+                      />
+                    </div>
+                  )}
+                  <CardTitle className="text-xl font-headline text-primary">{announcement.title}</CardTitle>
+                  <CardDescription>
+                    Posted on: {new Date(announcement.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-foreground/90">{announcement.content}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No announcements at the moment.</p>
         )}
       </section>
     </div>
