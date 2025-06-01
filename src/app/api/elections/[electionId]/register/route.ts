@@ -40,12 +40,20 @@ export async function POST(req: Request, { params }: { params: { electionId: str
     }
     
     const now = new Date();
-    const electionEndDate = new Date(election.endDate);
-    electionEndDate.setHours(23, 59, 59, 999); // Consider the election concluded after the very end of its end date
+    const electionStartDate = new Date(election.startDate);
+    // const electionEndDate = new Date(election.endDate);
+    // electionEndDate.setHours(23, 59, 59, 999); 
 
-    if (now > electionEndDate) {
-      return NextResponse.json({ message: 'This election has concluded. Registration is closed.' }, { status: 403 });
+    // Registration is only allowed for upcoming elections
+    if (now >= electionStartDate) {
+      return NextResponse.json({ message: 'Candidate registration is only open for upcoming elections. This election may have already started or concluded.' }, { status: 403 });
     }
+
+    // // This check is now implicitly covered by the one above, 
+    // // but kept for explicitness or if logic changes later.
+    // if (now > electionEndDate) {
+    //   return NextResponse.json({ message: 'This election has concluded. Registration is closed.' }, { status: 403 });
+    // }
 
 
     const newCandidate = {
@@ -54,12 +62,12 @@ export async function POST(req: Request, { params }: { params: { electionId: str
       platform: candidateData.platform,
       imageUrl: candidateData.imageUrl || undefined,
       voteCount: 0,
-      electionId: electionId, // Link back to the election
+      electionId: electionId, 
     };
 
     const result = await electionsCollection.updateOne(
       { _id: electionObjectId },
-      { $push: { candidates: newCandidate as any } } // Need to cast as any if TS complains about schema mismatch temporarily
+      { $push: { candidates: newCandidate as any } } 
     );
 
     if (result.modifiedCount === 0) {
@@ -73,4 +81,3 @@ export async function POST(req: Request, { params }: { params: { electionId: str
     return NextResponse.json({ message: error.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
-

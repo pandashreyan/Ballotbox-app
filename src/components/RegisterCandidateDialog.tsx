@@ -33,7 +33,7 @@ import type { Election } from '@/lib/types';
 interface RegisterCandidateDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  elections: Election[]; // Non-concluded elections
+  elections: Election[]; // Now specifically upcoming elections
   onCandidateRegistered?: () => void; 
 }
 
@@ -65,7 +65,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
     setIsRegistering(true);
     setRegistrationError(null);
     try {
-      const response = await fetch(`/api/elections/${data.electionId}/register`, {
+      const response = await fetch(\`/api/elections/\${data.electionId}/register\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: data.name, platform: data.platform, imageUrl: data.imageUrl }),
@@ -74,18 +74,18 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || `Server responded with ${response.status}`);
+        throw new Error(result.message || \`Server responded with \${response.status}\`);
       }
 
       toast({
         title: "Candidate Registered!",
-        description: `${result.candidate.name} has been successfully registered.`,
+        description: \`\${result.candidate.name} has been successfully registered.\`,
       });
       
       form.reset();
       onOpenChange(false);
       if (onCandidateRegistered) {
-        onCandidateRegistered(); // Callback to potentially refresh data on the calling page
+        onCandidateRegistered(); 
       }
 
     } catch (error: any) {
@@ -116,7 +116,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
             <UserPlus className="mr-2 h-5 w-5" /> Register New Candidate
           </DialogTitle>
           <DialogDescription>
-            Select an election and fill in the candidate's details.
+            Select an upcoming election and fill in the candidate's details.
           </DialogDescription>
         </DialogHeader>
         {registrationError && (
@@ -135,7 +135,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
               render={({ field }) => (
                 <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                   <SelectTrigger id="electionId">
-                    <SelectValue placeholder="Select an election" />
+                    <SelectValue placeholder="Select an upcoming election" />
                   </SelectTrigger>
                   <SelectContent>
                     {elections.length > 0 ? (
@@ -145,7 +145,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-elections" disabled>No ongoing or upcoming elections available</SelectItem>
+                      <SelectItem value="no-elections" disabled>No upcoming elections available for registration</SelectItem>
                     )}
                   </SelectContent>
                 </Select>

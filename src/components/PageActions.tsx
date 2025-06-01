@@ -11,10 +11,10 @@ import { useRouter } from 'next/navigation';
 
 
 interface PageActionsProps {
-  nonConcludedElections: Election[];
+  upcomingElections: Election[]; // Changed from nonConcludedElections
 }
 
-export function PageActions({ nonConcludedElections }: PageActionsProps) {
+export function PageActions({ upcomingElections }: PageActionsProps) {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const router = useRouter();
 
@@ -36,7 +36,7 @@ export function PageActions({ nonConcludedElections }: PageActionsProps) {
       <RegisterCandidateDialog
         isOpen={isRegisterDialogOpen}
         onOpenChange={setIsRegisterDialogOpen}
-        elections={nonConcludedElections}
+        elections={upcomingElections} // Pass upcomingElections
         onCandidateRegistered={handleCandidateRegistered}
       />
     </div>

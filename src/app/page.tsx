@@ -4,7 +4,7 @@ import type { Election } from '@/lib/types';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { PageActions } from '@/components/PageActions'; // Changed import
+import { PageActions } from '@/components/PageActions'; 
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -33,7 +33,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             candidateIdString = candidate._id.toString();
           } 
           else {
-            console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
+            console.warn(\`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.\`);
             candidateIdString = crypto.randomUUID();
           }
           return {
@@ -51,7 +51,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
     });
   } catch (e: any)  {
     console.error('Failed to fetch elections:', e);
-    return { error: `Failed to load elections. ${e.message || 'Please try again later.'}` };
+    return { error: \`Failed to load elections. ${e.message || 'Please try again later.'}\` };
   }
 }
 
@@ -81,11 +81,11 @@ export default async function HomePage() {
 
   const elections: Election[] = electionsResult;
 
-  const nonConcludedElections = elections.filter(election => {
+  const upcomingElections = elections.filter(election => {
     const now = new Date();
-    const endDate = new Date(election.endDate);
-    endDate.setHours(23, 59, 59, 999);
-    return now <= endDate;
+    const startDate = new Date(election.startDate);
+    // An election is upcoming if 'now' is before its 'startDate'
+    return now < startDate;
   });
 
   return (
@@ -104,7 +104,7 @@ export default async function HomePage() {
           <h2 className="text-3xl font-headline font-semibold">
             Available Elections
           </h2>
-          <PageActions nonConcludedElections={nonConcludedElections} />
+          <PageActions upcomingElections={upcomingElections} />
         </div>
         {elections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
