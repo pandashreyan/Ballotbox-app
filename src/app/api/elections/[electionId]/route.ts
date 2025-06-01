@@ -10,6 +10,7 @@ interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
   id?: ObjectId | string;
   name: string;
   platform: string;
+  party?: string;
   imageUrl?: string;
   voteCount?: number;
 }
@@ -31,7 +32,7 @@ export async function GET(request: Request, { params }: { params: { electionId: 
     const client = await clientPromise;
     const db = client.db(dbName);
     const electionsCollection = db.collection<ElectionDoc>('elections');
-    
+
     const electionDoc = await electionsCollection.findOne({ _id: new ObjectId(electionId) });
 
     if (!electionDoc) {
@@ -51,21 +52,21 @@ export async function GET(request: Request, { params }: { params: { electionId: 
         let candidateIdString: string;
         if (dbCandidate.id && typeof dbCandidate.id === 'string') {
           candidateIdString = dbCandidate.id;
-        } else if (dbCandidate.id instanceof ObjectId) { 
+        } else if (dbCandidate.id instanceof ObjectId) {
           candidateIdString = dbCandidate.id.toString();
-        } else if (dbCandidate._id instanceof ObjectId) { 
+        } else if (dbCandidate._id instanceof ObjectId) {
           candidateIdString = dbCandidate._id.toString();
         } else if (dbCandidate._id && typeof dbCandidate._id === 'string') {
             candidateIdString = dbCandidate._id;
         } else {
-          // Fallback, should ideally not happen if data is consistent
-          candidateIdString = new ObjectId().toString(); 
+          candidateIdString = new ObjectId().toString();
         }
-        
+
         return {
           id: candidateIdString,
           name: dbCandidate.name,
           platform: dbCandidate.platform,
+          party: dbCandidate.party || undefined,
           imageUrl: dbCandidate.imageUrl,
           voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
           electionId: electionIdString,

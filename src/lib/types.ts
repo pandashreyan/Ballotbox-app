@@ -1,9 +1,11 @@
+
 export interface Candidate {
   id: string;
   name: string;
   electionId: string;
   platform: string;
-  imageUrl?: string; 
+  party?: string; // New field for party affiliation
+  imageUrl?: string;
   voteCount?: number; // Optional, primarily for results display
 }
 

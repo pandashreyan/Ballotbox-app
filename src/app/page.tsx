@@ -4,7 +4,7 @@ import type { Election } from '@/lib/types';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { PageActions } from '@/components/PageActions'; 
+import { PageActions } from '@/components/PageActions';
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -23,26 +23,27 @@ async function getElections(): Promise<Election[] | { error: string }> {
           let candidateIdString: string;
           if (candidate.id && typeof candidate.id === 'string') {
             candidateIdString = candidate.id;
-          } 
+          }
           else if (candidate.id && typeof candidate.id.toString === 'function') {
             candidateIdString = candidate.id.toString();
-          } 
+          }
           // @ts-ignore _id may exist
           else if (candidate._id && typeof candidate._id.toString === 'function') {
           // @ts-ignore _id may exist
             candidateIdString = candidate._id.toString();
-          } 
+          }
           else {
-            console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
+            console.warn(`Candidate in election ${electionIdString} is missing a valid id or _id. Assigning a temporary UUID.`);
             candidateIdString = crypto.randomUUID();
           }
           return {
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
+            party: candidate.party || undefined,
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
-            electionId: electionIdString, 
+            electionId: electionIdString,
           };
         }),
         startDate: rest.startDate instanceof Date ? rest.startDate.toISOString() : rest.startDate,
@@ -81,10 +82,9 @@ export default async function HomePage() {
 
   const elections: Election[] = electionsResult;
 
+  const now = new Date();
   const upcomingElections = elections.filter(election => {
-    const now = new Date();
     const startDate = new Date(election.startDate);
-    // An election is upcoming if 'now' is before its 'startDate'
     return now < startDate;
   });
 

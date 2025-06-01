@@ -5,12 +5,12 @@ import type { Election as ElectionType, Candidate as CandidateType } from '@/lib
 import { ElectionDetailClient } from './client';
 import { notFound } from 'next/navigation';
 
-// Type for documents coming from MongoDB before transformation
 interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
-  _id?: ObjectId | string; // Can be ObjectId from DB or string if already processed
-  id?: ObjectId | string; // Can be ObjectId or string
+  _id?: ObjectId | string;
+  id?: ObjectId | string;
   name: string;
   platform: string;
+  party?: string;
   imageUrl?: string;
   voteCount?: number;
 }
@@ -31,7 +31,7 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
     const client = await clientPromise;
     const db = client.db(dbName);
     const electionsCollection = db.collection<ElectionDoc>('elections');
-    
+
     const electionDoc = await electionsCollection.findOne({ _id: new ObjectId(id) });
 
     if (!electionDoc) {
@@ -45,16 +45,16 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
       id: electionIdString,
       name: rest.name,
       description: rest.description,
-      startDate: new Date(rest.startDate).toISOString(), // Ensure ISO string format
-      endDate: new Date(rest.endDate).toISOString(),     // Ensure ISO string format
+      startDate: new Date(rest.startDate).toISOString(),
+      endDate: new Date(rest.endDate).toISOString(),
       candidates: rest.candidates.map(dbCandidate => {
         let candidateIdString: string;
 
         if (dbCandidate.id && typeof dbCandidate.id === 'string') {
           candidateIdString = dbCandidate.id;
-        } else if (dbCandidate.id instanceof ObjectId) { 
+        } else if (dbCandidate.id instanceof ObjectId) {
           candidateIdString = dbCandidate.id.toString();
-        } else if (dbCandidate._id instanceof ObjectId) { 
+        } else if (dbCandidate._id instanceof ObjectId) {
           candidateIdString = dbCandidate._id.toString();
         } else if (dbCandidate._id && typeof dbCandidate._id === 'string') {
             candidateIdString = dbCandidate._id;
@@ -63,13 +63,14 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
           console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
           candidateIdString = crypto.randomUUID();
         }
-        
+
         return {
           id: candidateIdString,
           name: dbCandidate.name,
           platform: dbCandidate.platform,
+          party: dbCandidate.party || undefined,
           imageUrl: dbCandidate.imageUrl,
-          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0, // Ensure voteCount is a number
+          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
           electionId: electionIdString,
         };
       }),
@@ -89,4 +90,3 @@ export default async function ElectionDetailPage({ params }: { params: { electio
 
   return <ElectionDetailClient initialElection={election} />;
 }
-

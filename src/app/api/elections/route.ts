@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import * as z from 'zod';
+import type { Election as ElectionType } from '@/lib/types'; // For return type
 
-// Schema for validating incoming election data on the server (optional, but good practice)
 const candidateSchema = z.object({
   name: z.string().min(2),
   platform: z.string().min(10),
+  party: z.string().min(2).optional().or(z.literal('')),
   imageUrl: z.string().url().optional().or(z.literal('')),
 });
 
@@ -26,7 +27,6 @@ export async function POST(req: Request) {
   try {
     const rawData = await req.json();
 
-    // Validate data
     const validationResult = createElectionSchema.safeParse(rawData);
     if (!validationResult.success) {
       return NextResponse.json({ message: 'Invalid data provided.', errors: validationResult.error.flatten().fieldErrors }, { status: 400 });
@@ -38,22 +38,23 @@ export async function POST(req: Request) {
     const db = client.db(dbName);
     const electionsCollection = db.collection('elections');
 
-    const electionId = new ObjectId(); // Pre-generate the main election ID
+    const electionId = new ObjectId();
 
     const candidatesWithIdsAndVotes = electionData.candidates.map(candidate => ({
       ...candidate,
-      id: new ObjectId().toString(), // Generate unique string ID for each candidate
-      electionId: electionId.toString(), // Link to the parent election
-      voteCount: 0, // Initialize voteCount
-      imageUrl: candidate.imageUrl || undefined, // Ensure empty string becomes undefined if desired by DB schema
+      id: new ObjectId().toString(),
+      electionId: electionId.toString(),
+      voteCount: 0,
+      party: candidate.party || undefined,
+      imageUrl: candidate.imageUrl || undefined,
     }));
 
     const electionDocument = {
       _id: electionId,
       name: electionData.name,
       description: electionData.description,
-      startDate: new Date(electionData.startDate), // Store as Date objects
-      endDate: new Date(electionData.endDate),     // Store as Date objects
+      startDate: new Date(electionData.startDate),
+      endDate: new Date(electionData.endDate),
       candidates: candidatesWithIdsAndVotes,
     };
 
@@ -62,17 +63,16 @@ export async function POST(req: Request) {
     if (!result.acknowledged || !result.insertedId) {
       return NextResponse.json({ message: 'Failed to create election in database.' }, { status: 500 });
     }
-    
-    // Fetch the inserted document to return it, ensuring it matches the Election type
+
     const createdElection = await electionsCollection.findOne({ _id: result.insertedId });
     if (!createdElection) {
         return NextResponse.json({ message: 'Election created but failed to retrieve.' }, { status: 500 });
     }
-    
+
     const { _id, ...restOfCreatedElection } = createdElection;
 
-    return NextResponse.json({ 
-        message: 'Election created successfully!', 
+    return NextResponse.json({
+        message: 'Election created successfully!',
         election: {
             id: _id.toString(),
             ...restOfCreatedElection,
@@ -80,9 +80,9 @@ export async function POST(req: Request) {
             endDate: new Date(restOfCreatedElection.endDate).toISOString(),
             candidates: restOfCreatedElection.candidates.map(c => ({
                 ...c,
-                // id and electionId are already strings
+                party: c.party || undefined,
             }))
-        }
+        } as ElectionType
     }, { status: 201 });
 
   } catch (error: any) {
@@ -91,7 +91,6 @@ export async function POST(req: Request) {
   }
 }
 
-// GET method to fetch all elections (optional, if you want this API to also serve election lists)
 export async function GET() {
   try {
     const client = await clientPromise;
@@ -116,12 +115,13 @@ export async function GET() {
           } else if (candidate._id) {
             candidateIdString = candidate._id.toString();
           } else {
-            candidateIdString = new ObjectId().toString(); // Fallback, should not happen if API POST is used
+            candidateIdString = new ObjectId().toString();
           }
           return {
             ...candidate,
             id: candidateIdString,
-            electionId: electionIdString, // Ensure this is set
+            electionId: electionIdString,
+            party: candidate.party || undefined,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
           };
         }),

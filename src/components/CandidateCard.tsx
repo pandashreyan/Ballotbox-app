@@ -15,7 +15,7 @@ interface CandidateCardProps {
   hasVoted: boolean;
   votedForThisCandidate: boolean;
   isElectionOngoing: boolean;
-  canVote: boolean; // New prop to control voting eligibility based on role
+  canVote: boolean;
 }
 
 export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandidate, isElectionOngoing, canVote }: CandidateCardProps) {
@@ -24,12 +24,12 @@ export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandida
       <CardHeader className="items-center text-center pb-2">
         <div className="relative w-24 h-24 rounded-full overflow-hidden mx-auto mb-3 border-2 border-primary shadow-md">
           {candidate.imageUrl ? (
-            <Image 
-              src={candidate.imageUrl} 
-              alt={candidate.name} 
+            <Image
+              src={candidate.imageUrl}
+              alt={candidate.name}
               data-ai-hint="person portrait"
               layout="fill"
-              objectFit="cover" 
+              objectFit="cover"
             />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -38,6 +38,9 @@ export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandida
           )}
         </div>
         <CardTitle className="text-lg font-headline">{candidate.name}</CardTitle>
+        {candidate.party && (
+          <p className="text-xs text-muted-foreground">{candidate.party}</p>
+        )}
         {votedForThisCandidate && (
            <Badge className="mt-1 bg-accent text-accent-foreground">Your Vote</Badge>
         )}
@@ -46,9 +49,9 @@ export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandida
         <PlatformSummary candidateName={candidate.name} platformText={candidate.platform} />
       </CardContent>
       <CardFooter className="p-4">
-        <Button 
-          onClick={() => onVote(candidate.id)} 
-          disabled={hasVoted || !isElectionOngoing || !canVote} // Add !canVote to the disabled condition
+        <Button
+          onClick={() => onVote(candidate.id)}
+          disabled={hasVoted || !isElectionOngoing || !canVote}
           className="w-full bg-primary hover:bg-primary/90 transition-colors duration-200 disabled:opacity-70"
           aria-label={`Vote for ${candidate.name}`}
         >

@@ -7,6 +7,7 @@ import * as z from 'zod';
 const candidateRegistrationSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),
+  party: z.string().min(2).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 });
 
@@ -38,36 +39,27 @@ export async function POST(req: Request, { params }: { params: { electionId: str
     if (!election) {
       return NextResponse.json({ message: 'Election not found.' }, { status: 404 });
     }
-    
+
     const now = new Date();
     const electionStartDate = new Date(election.startDate);
-    // const electionEndDate = new Date(election.endDate);
-    // electionEndDate.setHours(23, 59, 59, 999); 
 
-    // Registration is only allowed for upcoming elections
     if (now >= electionStartDate) {
       return NextResponse.json({ message: 'Candidate registration is only open for upcoming elections. This election may have already started or concluded.' }, { status: 403 });
     }
-
-    // // This check is now implicitly covered by the one above, 
-    // // but kept for explicitness or if logic changes later.
-    // if (now > electionEndDate) {
-    //   return NextResponse.json({ message: 'This election has concluded. Registration is closed.' }, { status: 403 });
-    // }
-
 
     const newCandidate = {
       id: new ObjectId().toString(),
       name: candidateData.name,
       platform: candidateData.platform,
+      party: candidateData.party || undefined,
       imageUrl: candidateData.imageUrl || undefined,
       voteCount: 0,
-      electionId: electionId, 
+      electionId: electionId,
     };
 
     const result = await electionsCollection.updateOne(
       { _id: electionObjectId },
-      { $push: { candidates: newCandidate as any } } 
+      { $push: { candidates: newCandidate as any } }
     );
 
     if (result.modifiedCount === 0) {

@@ -10,17 +10,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker" 
+import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { AlertCircle, PlusCircle, Trash2, Loader2, ShieldAlert } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { useAuth } from "@/hooks/useAuth"; // Import the auth hook
+import { useAuth } from "@/hooks/useAuth";
 
 const candidateSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),
+  party: z.string().min(2, { message: "Party name must be at least 2 characters."}).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 })
 
@@ -40,7 +41,7 @@ type CreateElectionFormValues = z.infer<typeof createElectionSchema>;
 export default function CreateElectionPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); // Get the current user
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
@@ -55,7 +56,7 @@ export default function CreateElectionPage() {
       description: "",
       startDate: undefined,
       endDate: undefined,
-      candidates: [{ name: "", platform: "", imageUrl: "" }],
+      candidates: [{ name: "", platform: "", party: "", imageUrl: "" }],
     },
   });
 
@@ -77,6 +78,10 @@ export default function CreateElectionPage() {
         ...data,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
+        candidates: data.candidates.map(c => ({
+          ...c,
+          party: c.party || undefined, // Ensure empty string becomes undefined
+        }))
       };
 
       const response = await fetch('/api/elections', {
@@ -102,7 +107,7 @@ export default function CreateElectionPage() {
         title: "Election Created!",
         description: `The election "${data.name}" has been successfully created.`,
       });
-      router.push('/'); 
+      router.push('/');
     } catch (error: any) {
       console.error("Failed to create election:", error);
       setServerError(error.message || "An unexpected error occurred. Please try again.");
@@ -116,8 +121,7 @@ export default function CreateElectionPage() {
     }
   };
 
-  // Client-side check for admin role
-  if (user === undefined) { // Still loading auth state
+  if (user === undefined) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading...</div>;
   }
 
@@ -235,6 +239,11 @@ export default function CreateElectionPage() {
                     <Input id={`candidates.${index}.name`} {...form.register(`candidates.${index}.name`)} placeholder="Candidate Full Name" />
                     {form.formState.errors.candidates?.[index]?.name && <p className="text-sm text-destructive">{form.formState.errors.candidates?.[index]?.name?.message}</p>}
                   </div>
+                   <div className="space-y-2">
+                    <Label htmlFor={`candidates.${index}.party`}>Party Name (Optional)</Label>
+                    <Input id={`candidates.${index}.party`} {...form.register(`candidates.${index}.party`)} placeholder="Candidate's Political Party" />
+                    {form.formState.errors.candidates?.[index]?.party && <p className="text-sm text-destructive">{form.formState.errors.candidates?.[index]?.party?.message}</p>}
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor={`candidates.${index}.platform`}>Platform Summary</Label>
                     <Textarea id={`candidates.${index}.platform`} {...form.register(`candidates.${index}.platform`)} placeholder="Brief platform description" />
@@ -253,13 +262,13 @@ export default function CreateElectionPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => append({ name: "", platform: "", imageUrl: "" })}
+                onClick={() => append({ name: "", platform: "", party: "", imageUrl: "" })}
                 className="mt-2"
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Candidate
               </Button>
             </section>
-            
+
             <CardFooter className="flex justify-end p-0 pt-6">
               <Button type="submit" disabled={isLoading} size="lg" className="min-w-[150px]">
                 {isLoading ? (

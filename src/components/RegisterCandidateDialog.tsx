@@ -34,13 +34,14 @@ interface RegisterCandidateDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   elections: Election[]; // Now specifically upcoming elections
-  onCandidateRegistered?: () => void; 
+  onCandidateRegistered?: () => void;
 }
 
 const candidateRegistrationSchema = z.object({
   electionId: z.string().min(1, { message: "Please select an election." }),
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),
+  party: z.string().min(2, { message: "Party name must be at least 2 characters." }).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 });
 
@@ -57,6 +58,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
       electionId: '',
       name: '',
       platform: '',
+      party: '',
       imageUrl: '',
     },
   });
@@ -68,7 +70,12 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
       const response = await fetch(`/api/elections/${data.electionId}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: data.name, platform: data.platform, imageUrl: data.imageUrl }),
+        body: JSON.stringify({
+          name: data.name,
+          platform: data.platform,
+          party: data.party || undefined,
+          imageUrl: data.imageUrl
+        }),
       });
 
       const result = await response.json();
@@ -81,11 +88,11 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
         title: "Candidate Registered!",
         description: `${result.candidate.name} has been successfully registered.`,
       });
-      
+
       form.reset();
       onOpenChange(false);
       if (onCandidateRegistered) {
-        onCandidateRegistered(); 
+        onCandidateRegistered();
       }
 
     } catch (error: any) {
@@ -158,6 +165,11 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
             <Label htmlFor="candidate-name">Candidate Name</Label>
             <Input id="candidate-name" {...form.register("name")} placeholder="Full Name" />
             {form.formState.errors.name && <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>}
+          </div>
+           <div className="space-y-1">
+            <Label htmlFor="candidate-party">Party Name (Optional)</Label>
+            <Input id="candidate-party" {...form.register("party")} placeholder="Candidate's Political Party" />
+            {form.formState.errors.party && <p className="text-sm text-destructive">{form.formState.errors.party.message}</p>}
           </div>
           <div className="space-y-1">
             <Label htmlFor="candidate-platform">Platform Summary</Label>
