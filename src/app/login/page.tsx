@@ -5,40 +5,92 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog } from "lucide-react"
+import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { UserRole } from "@/hooks/useAuth"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
+const voterDetailsSchema = z.object({
+  fullName: z.string().min(3, { message: "Full name must be at least 3 characters." }),
+  dob: z.date({ required_error: "Date of birth is required." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  nationalId: z.string().min(5, { message: "National ID must be at least 5 characters." }),
+});
+type VoterDetailsFormValues = z.infer<typeof voterDetailsSchema>;
+
+type LoginPageStep = "selectRole" | "enterVoterDetails";
 
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedRole, setSelectedRole] = React.useState<UserRole | ''>('');
+  const [currentStep, setCurrentStep] = React.useState<LoginPageStep>("selectRole");
 
-  const handleLoginAsRole = async () => {
+  const voterDetailsForm = useForm<VoterDetailsFormValues>({
+    resolver: zodResolver(voterDetailsSchema),
+    defaultValues: {
+      fullName: "",
+      dob: undefined,
+      email: "",
+      nationalId: "",
+    },
+  });
+
+  const handleRoleSelectionProceed = async () => {
     if (!selectedRole) {
       toast({
         title: "No Role Selected",
-        description: "Please select a role to log in as.",
+        description: "Please select a role to proceed.",
         variant: "destructive",
       })
       return
     }
 
-    setIsLoading(true)
-    console.log("Login attempt with role (mock):", selectedRole)
+    if (selectedRole === 'voter') {
+      setCurrentStep("enterVoterDetails");
+      voterDetailsForm.reset(); // Reset form if user goes back and forth
+    } else {
+      // Admin or Candidate login
+      setIsLoading(true)
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API call
 
-    // Simulate API call
+      if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
+        (window as any).setMockUserRole(selectedRole);
+        toast({
+          title: `Logged in as ${selectedRole} (Mock)`,
+          description: "You have successfully switched your mock role.",
+        })
+        router.push('/')
+      } else {
+        toast({
+          title: "Mock Login Function Unavailable",
+          description: "Could not set mock user role.",
+          variant: "destructive",
+        })
+      }
+      setIsLoading(false)
+    }
+  }
+
+  const onSubmitVoterDetails = async (data: VoterDetailsFormValues) => {
+    setIsLoading(true)
+    console.log("Voter details submitted (mock):", data)
+    // Simulate API call for voter registration details
     await new Promise(resolve => setTimeout(resolve, 500))
 
     if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
-      (window as any).setMockUserRole(selectedRole);
+      (window as any).setMockUserRole('voter'); // Set role to voter
       toast({
-        title: `Logged in as ${selectedRole} (Mock)`,
-        description: "You have successfully switched your mock role.",
+        title: "Logged in as Voter (Mock)",
+        description: "Your details were noted (mock process). You are now logged in.",
       })
       router.push('/')
     } else {
@@ -50,6 +102,7 @@ export default function LoginPage() {
     }
     setIsLoading(false)
   }
+
 
   const getRoleIcon = (role: UserRole | '') => {
     if (!role) return <LogIn className="mr-2 h-7 w-7" />;
@@ -73,42 +126,89 @@ export default function LoginPage() {
           <Card className="w-full max-w-md shadow-xl">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-headline text-primary flex items-center justify-center">
-                {getRoleIcon(selectedRole)} Select Role to Login
+                {getRoleIcon(currentStep === "selectRole" ? selectedRole : 'voter')}
+                {currentStep === "selectRole" ? "Select Role to Login" : "Enter Voter Details"}
               </CardTitle>
-              <CardDescription>Choose a mock user role to continue.</CardDescription>
+              <CardDescription>
+                {currentStep === "selectRole"
+                  ? "Choose a mock user role to continue."
+                  : "Please provide your details to continue as a voter."}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="role-select">User Role</Label>
-                  <Select value={selectedRole || ''} onValueChange={(value) => setSelectedRole(value as UserRole)}>
-                    <SelectTrigger id="role-select" className="w-full">
-                      <SelectValue placeholder="Select a role..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">
-                        <div className="flex items-center">
-                          <UserCog className="mr-2 h-4 w-4" /> Admin
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="candidate">
-                        <div className="flex items-center">
-                          <UserCheck className="mr-2 h-4 w-4" /> Candidate
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="voter">
-                        <div className="flex items-center">
-                          <Users className="mr-2 h-4 w-4" /> Voter
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+              {currentStep === "selectRole" ? (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="role-select">User Role</Label>
+                    <Select value={selectedRole || ''} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+                      <SelectTrigger id="role-select" className="w-full">
+                        <SelectValue placeholder="Select a role..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">
+                          <div className="flex items-center">
+                            <UserCog className="mr-2 h-4 w-4" /> Admin
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="candidate">
+                          <div className="flex items-center">
+                            <UserCheck className="mr-2 h-4 w-4" /> Candidate
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="voter">
+                          <div className="flex items-center">
+                            <Users className="mr-2 h-4 w-4" /> Voter
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleRoleSelectionProceed} disabled={isLoading || !selectedRole} className="w-full" size="lg">
+                    {isLoading ? "Processing..." : "Proceed"}
+                  </Button>
                 </div>
-
-                <Button onClick={handleLoginAsRole} disabled={isLoading || !selectedRole} className="w-full" size="lg">
-                  {isLoading ? "Logging in..." : "Login as Selected Role"}
-                </Button>
-              </div>
+              ) : ( // currentStep === "enterVoterDetails"
+                <form onSubmit={voterDetailsForm.handleSubmit(onSubmitVoterDetails)} className="space-y-4">
+                  <div>
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input id="fullName" {...voterDetailsForm.register("fullName")} placeholder="John Doe" />
+                    {voterDetailsForm.formState.errors.fullName && <p className="text-sm text-destructive">{voterDetailsForm.formState.errors.fullName.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Controller
+                      control={voterDetailsForm.control}
+                      name="dob"
+                      render={({ field }) => (
+                        <DatePicker
+                          date={field.value}
+                          setDate={field.onChange}
+                          placeholder="Select your date of birth"
+                        />
+                      )}
+                    />
+                    {voterDetailsForm.formState.errors.dob && <p className="text-sm text-destructive">{voterDetailsForm.formState.errors.dob.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input id="email" type="email" {...voterDetailsForm.register("email")} placeholder="you@example.com" />
+                    {voterDetailsForm.formState.errors.email && <p className="text-sm text-destructive">{voterDetailsForm.formState.errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="nationalId">National ID</Label>
+                    <Input id="nationalId" {...voterDetailsForm.register("nationalId")} placeholder="Your National ID" />
+                    {voterDetailsForm.formState.errors.nationalId && <p className="text-sm text-destructive">{voterDetailsForm.formState.errors.nationalId.message}</p>}
+                  </div>
+                  <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+                     <Button type="button" variant="outline" onClick={() => setCurrentStep("selectRole")} className="w-full sm:w-auto">
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                      </Button>
+                    <Button type="submit" disabled={isLoading} className="w-full sm:flex-grow" size="lg">
+                      {isLoading ? "Processing..." : "Complete Registration & Login"}
+                    </Button>
+                  </div>
+                </form>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col items-center text-sm">
               <p className="text-muted-foreground">
@@ -183,3 +283,5 @@ export default function LoginPage() {
     </div>
   )
 }
+
+    
