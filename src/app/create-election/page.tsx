@@ -14,8 +14,9 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { AlertCircle, PlusCircle, Trash2, Loader2 } from "lucide-react"
+import { AlertCircle, PlusCircle, Trash2, Loader2, ShieldAlert } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useAuth } from "@/hooks/useAuth"; // Import the auth hook
 
 const candidateSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
@@ -39,6 +40,7 @@ type CreateElectionFormValues = z.infer<typeof createElectionSchema>;
 export default function CreateElectionPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get the current user
   const [isLoading, setIsLoading] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
@@ -63,6 +65,11 @@ export default function CreateElectionPage() {
   });
 
   const onSubmit = async (data: CreateElectionFormValues) => {
+    if (user?.role !== 'admin') {
+      setServerError("Access Denied: Only administrators can create elections.");
+      toast({ title: "Access Denied", description: "You do not have permission to create elections.", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
     setServerError(null);
     try {
@@ -80,7 +87,6 @@ export default function CreateElectionPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        // Try to parse out specific field errors if available
         let message = errorData.message || `Server responded with ${response.status}`;
         if (errorData.errors && typeof errorData.errors === 'object') {
           const fieldErrors = Object.entries(errorData.errors)
@@ -109,6 +115,33 @@ export default function CreateElectionPage() {
       setIsLoading(false);
     }
   };
+
+  // Client-side check for admin role
+  if (user === undefined) { // Still loading auth state
+    return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading...</div>;
+  }
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4 text-center">
+        <Card className="shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-headline text-destructive flex items-center justify-center">
+              <ShieldAlert className="mr-2 h-8 w-8" /> Access Denied
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg text-muted-foreground">
+              You do not have permission to create new elections. This action is restricted to administrators.
+            </p>
+            <Button onClick={() => router.push('/')} className="mt-6">
+              Go to Homepage
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">

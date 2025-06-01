@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Candidate } from '@/lib/types';
@@ -14,9 +15,10 @@ interface CandidateCardProps {
   hasVoted: boolean;
   votedForThisCandidate: boolean;
   isElectionOngoing: boolean;
+  canVote: boolean; // New prop to control voting eligibility based on role
 }
 
-export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandidate, isElectionOngoing }: CandidateCardProps) {
+export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandidate, isElectionOngoing, canVote }: CandidateCardProps) {
   return (
     <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
       <CardHeader className="items-center text-center pb-2">
@@ -46,12 +48,12 @@ export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandida
       <CardFooter className="p-4">
         <Button 
           onClick={() => onVote(candidate.id)} 
-          disabled={hasVoted || !isElectionOngoing}
+          disabled={hasVoted || !isElectionOngoing || !canVote} // Add !canVote to the disabled condition
           className="w-full bg-primary hover:bg-primary/90 transition-colors duration-200 disabled:opacity-70"
           aria-label={`Vote for ${candidate.name}`}
         >
           <VoteIcon className="mr-2 h-4 w-4" />
-          {votedForThisCandidate ? 'Voted' : (hasVoted ? 'Vote Cast' : 'Vote')}
+          {votedForThisCandidate ? 'Voted' : (hasVoted ? 'Vote Cast' : (isElectionOngoing && canVote ? 'Vote' : 'Voting Closed'))}
         </Button>
       </CardFooter>
     </Card>

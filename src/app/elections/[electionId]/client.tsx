@@ -7,6 +7,7 @@ import type { Election, Candidate } from '@/lib/types';
 import { CandidateCard } from '@/components/CandidateCard';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 import { ArrowLeft, BarChart3, CalendarDays, CheckCircle, Info, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,10 +24,11 @@ interface ClientElectionStatus {
 export function ElectionDetailClient({ initialElection }: ElectionDetailClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user from auth hook
   
   const [election, setElection] = useState<Election>(initialElection);
   const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null);
-  const [isLoadingClientState, setIsLoadingClientState] = useState(true); // For localStorage access
+  const [isLoadingClientState, setIsLoadingClientState] = useState(true); 
 
   const [clientFormattedStartDate, setClientFormattedStartDate] = useState<string | null>(null);
   const [clientFormattedEndDate, setClientFormattedEndDate] = useState<string | null>(null);
@@ -37,14 +39,12 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
   const electionId = initialElection.id;
 
   useEffect(() => {
-    setIsClientMounted(true); // Component has mounted
+    setIsClientMounted(true); 
 
-    // Format dates on client
     const clientFormatDate = (dateString: string | undefined) => dateString ? new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
     setClientFormattedStartDate(clientFormatDate(election.startDate));
     setClientFormattedEndDate(clientFormatDate(election.endDate));
 
-    // Determine election status on client
     const now = new Date();
     const startDate = new Date(election.startDate);
     const endDate = new Date(election.endDate);
@@ -57,10 +57,9 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     } else if (now > endDate) {
       setClientElectionStatusMessage({ type: "concluded", message: "This election has concluded. Voting is closed." });
     } else {
-      setClientElectionStatusMessage({ type: "ongoing", message: "This election is currently ongoing."}); // Or null if no message needed for ongoing
+      setClientElectionStatusMessage({ type: "ongoing", message: "This election is currently ongoing."});
     }
 
-    // LocalStorage logic
     const storedVotedState = localStorage.getItem(`ballotbox_voted_${electionId}`);
     if (storedVotedState) {
       setVotedCandidateId(storedVotedState);
@@ -77,11 +76,15 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         })),
       }));
     }
-    setIsLoadingClientState(false); // Done with localStorage
-  }, [electionId, election.startDate, election.endDate]); // Dependencies for date/status calculations
+    setIsLoadingClientState(false);
+  }, [electionId, election.startDate, election.endDate]);
+
+  const canUserVote = useMemo(() => {
+    return user?.role === 'voter' || user?.role === 'candidate';
+  }, [user]);
 
   const handleVote = (candidateId: string) => {
-    if (votedCandidateId || !clientIsElectionOngoing) return;
+    if (votedCandidateId || !clientIsElectionOngoing || !canUserVote) return;
 
     setVotedCandidateId(candidateId);
     localStorage.setItem(`ballotbox_voted_${electionId}`, candidateId);
@@ -108,12 +111,10 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     });
   };
   
-  // Fallback for server render or before client mount
   const serverFormattedStartDate = election.startDate.split('T')[0];
   const serverFormattedEndDate = election.endDate.split('T')[0];
 
-
-  if (isLoadingClientState || !isClientMounted) {
+  if (isLoadingClientState || !isClientMounted || user === undefined) {
      return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election details...</div>;
   }
 
@@ -165,6 +166,16 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
           </AlertDescription>
         </Alert>
       )}
+      
+      {!canUserVote && clientIsElectionOngoing && !votedCandidateId && (
+         <Alert variant="default" className="bg-yellow-100 border-yellow-300 text-yellow-700">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Voting Information</AlertTitle>
+          <AlertDescription>
+            Your current role ({user?.role || 'guest'}) does not permit voting in this election.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <section>
         <h2 className="text-2xl font-headline font-semibold mb-6">Candidates</h2>
@@ -177,7 +188,8 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 onVote={handleVote}
                 hasVoted={!!votedCandidateId}
                 votedForThisCandidate={votedCandidateId === candidate.id}
-                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing} // Default to false if not yet determined
+                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing}
+                canVote={!!canUserVote} // Pass the canVote status
               />
             ))}
           </div>
