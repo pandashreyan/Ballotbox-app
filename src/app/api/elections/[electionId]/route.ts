@@ -2,24 +2,25 @@
 import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import type { Election as ElectionType, Candidate as CandidateType } from '@/lib/types';
+import type { Election as AppElectionType, Candidate as AppCandidateType } from '@/lib/types';
 
-// Type for documents coming from MongoDB before transformation
-interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
-  _id?: ObjectId | string;
-  id?: ObjectId | string;
-  name: string;
-  platform: string;
-  party: string; // Party is required
-  imageUrl?: string;
-  voteCount?: number;
+// Define MongoDB specific types for clarity
+interface CandidateInDB extends Omit<AppCandidateType, 'electionId' | 'voteCount' | 'id'> {
+  id: string;       // Candidate's custom string ID
+  voteCount: number; // voteCount is a number in DB
+  electionId: string; // Stored with candidate for reference, though parent electionId is primary
 }
-interface ElectionDoc extends Omit<ElectionType, 'id' | 'candidates' | 'startDate' | 'endDate'> {
+
+interface ElectionInDB {
   _id: ObjectId;
-  startDate: Date | string;
-  endDate: Date | string;
-  candidates: Array<CandidateDoc>;
+  name: string;
+  description: string;
+  startDate: Date; // Stored as ISODate in MongoDB
+  endDate: Date;   // Stored as ISODate in MongoDB
+  candidates: CandidateInDB[];
 }
+
+export const dynamic = 'force-dynamic'; // Ensures fresh data on every request
 
 export async function GET(request: Request, { params }: { params: { electionId: string } }) {
   const { electionId } = params;
@@ -31,7 +32,7 @@ export async function GET(request: Request, { params }: { params: { electionId: 
   try {
     const client = await clientPromise;
     const db = client.db(dbName);
-    const electionsCollection = db.collection<ElectionDoc>('elections');
+    const electionsCollection = db.collection<ElectionInDB>('elections');
 
     const electionDoc = await electionsCollection.findOne({ _id: new ObjectId(electionId) });
 
@@ -42,34 +43,27 @@ export async function GET(request: Request, { params }: { params: { electionId: 
     const { _id, ...rest } = electionDoc;
     const electionIdString = _id.toString();
 
-    const election: ElectionType = {
+    const election: AppElectionType = {
       id: electionIdString,
       name: rest.name,
       description: rest.description,
       startDate: new Date(rest.startDate).toISOString(),
       endDate: new Date(rest.endDate).toISOString(),
-      candidates: rest.candidates.map(dbCandidate => {
-        let candidateIdString: string;
-        if (dbCandidate.id && typeof dbCandidate.id === 'string') {
-          candidateIdString = dbCandidate.id;
-        } else if (dbCandidate.id instanceof ObjectId) {
-          candidateIdString = dbCandidate.id.toString();
-        } else if (dbCandidate._id instanceof ObjectId) {
-          candidateIdString = dbCandidate._id.toString();
-        } else if (dbCandidate._id && typeof dbCandidate._id === 'string') {
-            candidateIdString = dbCandidate._id;
-        } else {
-          candidateIdString = new ObjectId().toString();
+      candidates: rest.candidates.map((dbCandidate: CandidateInDB) => {
+        if (typeof dbCandidate.id !== 'string') {
+            console.error(`Data integrity issue: Candidate in election ${electionIdString} is missing a string 'id'. Candidate data:`, dbCandidate);
         }
-
+        if (typeof dbCandidate.voteCount !== 'number') {
+            console.error(`Data integrity issue: Candidate in election ${electionIdString} has non-number 'voteCount'. Candidate data:`, dbCandidate);
+        }
         return {
-          id: candidateIdString,
+          id: dbCandidate.id, // Should be a string
           name: dbCandidate.name,
           platform: dbCandidate.platform,
-          party: dbCandidate.party, // Party is now required
+          party: dbCandidate.party,
           imageUrl: dbCandidate.imageUrl,
-          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
-          electionId: electionIdString,
+          voteCount: dbCandidate.voteCount, // Should be a number
+          electionId: electionIdString, // Use parent electionId for consistency
         };
       }),
     };

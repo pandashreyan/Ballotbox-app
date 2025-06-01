@@ -4,9 +4,9 @@ export interface Candidate {
   name: string;
   electionId: string;
   platform: string;
-  party: string; // Changed from optional to required
+  party: string;
   imageUrl?: string;
-  voteCount?: number; // Optional, primarily for results display
+  voteCount: number; // Changed from optional to required, initialized to 0
 }
 
 export interface Election {

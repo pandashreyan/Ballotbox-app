@@ -3,12 +3,12 @@ import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import * as z from 'zod';
-import type { Election as ElectionType } from '@/lib/types'; // For return type
+import type { Election as ElectionType, Candidate as CandidateType } from '@/lib/types'; // For return type
 
 const candidateSchema = z.object({
   name: z.string().min(2),
   platform: z.string().min(10),
-  party: z.string().min(2, { message: "Party name must be at least 2 characters." }), // Made required
+  party: z.string().min(2, { message: "Party name must be at least 2 characters." }),
   imageUrl: z.string().url().optional().or(z.literal('')),
 });
 
@@ -39,13 +39,13 @@ export async function POST(req: Request) {
     const electionsCollection = db.collection('elections');
 
     const electionId = new ObjectId();
+    const electionIdString = electionId.toString();
 
     const candidatesWithIdsAndVotes = electionData.candidates.map(candidate => ({
       ...candidate,
       id: new ObjectId().toString(),
-      electionId: electionId.toString(),
-      voteCount: 0,
-      // party: candidate.party, // Party is now required and should be present
+      electionId: electionIdString, // Store electionId with candidate
+      voteCount: 0, // Initialize voteCount
       imageUrl: candidate.imageUrl || undefined,
     }));
 
@@ -71,18 +71,27 @@ export async function POST(req: Request) {
 
     const { _id, ...restOfCreatedElection } = createdElection;
 
+    // Map to application type
+    const responseElection: ElectionType = {
+        id: _id.toString(),
+        name: restOfCreatedElection.name,
+        description: restOfCreatedElection.description,
+        startDate: new Date(restOfCreatedElection.startDate).toISOString(),
+        endDate: new Date(restOfCreatedElection.endDate).toISOString(),
+        candidates: restOfCreatedElection.candidates.map(c => ({
+            id: c.id,
+            name: c.name,
+            platform: c.platform,
+            party: c.party,
+            imageUrl: c.imageUrl,
+            voteCount: c.voteCount, // Already a number
+            electionId: _id.toString(), // Ensure parent electionId
+        }))
+    };
+
     return NextResponse.json({
         message: 'Election created successfully!',
-        election: {
-            id: _id.toString(),
-            ...restOfCreatedElection,
-            startDate: new Date(restOfCreatedElection.startDate).toISOString(),
-            endDate: new Date(restOfCreatedElection.endDate).toISOString(),
-            candidates: restOfCreatedElection.candidates.map(c => ({
-                ...c,
-                // party: c.party, // Party is now required
-            }))
-        } as ElectionType
+        election: responseElection
     }, { status: 201 });
 
   } catch (error: any) {
@@ -95,41 +104,44 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db(dbName);
-    const electionsCollection = db.collection('elections');
+    const electionsCollection = db.collection('elections'); // Should use ElectionInDB type if defined globally
     const electionsData = await electionsCollection.find({}).sort({ startDate: -1 }).toArray();
 
-    const elections = electionsData.map((electionDoc: any) => {
+    const elections: ElectionType[] = electionsData.map((electionDoc: any) => { // Use any for electionDoc if ElectionInDB not defined here
       const { _id, ...rest } = electionDoc;
       const electionIdString = _id.toString();
       return {
         id: electionIdString,
-        ...rest,
+        name: rest.name,
+        description: rest.description,
         startDate: new Date(rest.startDate).toISOString(),
         endDate: new Date(rest.endDate).toISOString(),
-        candidates: rest.candidates.map((candidate: any) => {
-          let candidateIdString: string;
-          if (candidate.id && typeof candidate.id === 'string') {
-            candidateIdString = candidate.id;
-          } else if (candidate.id) {
-            candidateIdString = candidate.id.toString();
-          } else if (candidate._id) {
-            candidateIdString = candidate._id.toString();
-          } else {
-            candidateIdString = new ObjectId().toString();
+        candidates: rest.candidates.map((candidate: any) => { // Use any for candidate if CandidateInDB not defined here
+          // Basic assertion that candidate.id is a string and voteCount is a number
+          const candId = typeof candidate.id === 'string' ? candidate.id : new ObjectId().toString();
+          if (typeof candidate.id !== 'string') {
+            console.warn(`Candidate ID in election ${electionIdString} for candidate ${candidate.name} is not a string.`, candidate.id);
           }
+          const candVoteCount = typeof candidate.voteCount === 'number' ? candidate.voteCount : 0;
+           if (typeof candidate.voteCount !== 'number') {
+            console.warn(`Candidate voteCount in election ${electionIdString} for candidate ${candidate.name} is not a number.`, candidate.voteCount);
+          }
+
           return {
-            ...candidate,
-            id: candidateIdString,
+            id: candId,
+            name: candidate.name,
+            platform: candidate.platform,
+            party: candidate.party,
+            imageUrl: candidate.imageUrl,
+            voteCount: candVoteCount,
             electionId: electionIdString,
-            party: candidate.party, // Party is now required
-            voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
           };
         }),
       };
     });
     return NextResponse.json(elections, { status: 200 });
-  } catch (e) {
+  } catch (e:any) {
     console.error('Failed to fetch elections:', e);
-    return NextResponse.json({ message: 'Failed to load elections.' }, { status: 500 });
+    return NextResponse.json({ message: `Failed to load elections: ${e.message}` }, { status: 500 });
   }
 }

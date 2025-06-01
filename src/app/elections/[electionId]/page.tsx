@@ -1,28 +1,28 @@
 
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import type { Election as ElectionType, Candidate as CandidateType } from '@/lib/types';
+import type { Election as AppElectionType, Candidate as AppCandidateType } from '@/lib/types';
 import { ElectionDetailClient } from './client';
 import { notFound } from 'next/navigation';
 
-interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
-  _id?: ObjectId | string;
-  id?: ObjectId | string;
-  name: string;
-  platform: string;
-  party: string; // Party is required
-  imageUrl?: string;
-  voteCount?: number;
+// Define MongoDB specific types for clarity matching the API route
+interface CandidateInDB extends Omit<AppCandidateType, 'electionId' | 'voteCount' | 'id'> {
+  id: string;
+  voteCount: number;
+  electionId: string; 
 }
-interface ElectionDoc extends Omit<ElectionType, 'id' | 'candidates' | 'startDate' | 'endDate'> {
+
+interface ElectionInDB {
   _id: ObjectId;
-  startDate: Date | string;
-  endDate: Date | string;
-  candidates: Array<CandidateDoc>;
+  name: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  candidates: CandidateInDB[];
 }
 
 
-async function getElectionById(id: string): Promise<ElectionType | null> {
+async function getElectionById(id: string): Promise<AppElectionType | null> {
   if (!ObjectId.isValid(id)) {
     console.error("Invalid ObjectId format for election ID:", id);
     return null;
@@ -30,7 +30,7 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
   try {
     const client = await clientPromise;
     const db = client.db(dbName);
-    const electionsCollection = db.collection<ElectionDoc>('elections');
+    const electionsCollection = db.collection<ElectionInDB>('elections');
 
     const electionDoc = await electionsCollection.findOne({ _id: new ObjectId(id) });
 
@@ -47,30 +47,20 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
       description: rest.description,
       startDate: new Date(rest.startDate).toISOString(),
       endDate: new Date(rest.endDate).toISOString(),
-      candidates: rest.candidates.map(dbCandidate => {
-        let candidateIdString: string;
-
-        if (dbCandidate.id && typeof dbCandidate.id === 'string') {
-          candidateIdString = dbCandidate.id;
-        } else if (dbCandidate.id instanceof ObjectId) {
-          candidateIdString = dbCandidate.id.toString();
-        } else if (dbCandidate._id instanceof ObjectId) {
-          candidateIdString = dbCandidate._id.toString();
-        } else if (dbCandidate._id && typeof dbCandidate._id === 'string') {
-            candidateIdString = dbCandidate._id;
+      candidates: rest.candidates.map((dbCandidate: CandidateInDB) => {
+         if (typeof dbCandidate.id !== 'string') {
+            console.error(`Data integrity issue on page: Candidate in election ${electionIdString} is missing a string 'id'. Candidate data:`, dbCandidate);
         }
-         else {
-          console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
-          candidateIdString = crypto.randomUUID();
+        if (typeof dbCandidate.voteCount !== 'number') {
+            console.error(`Data integrity issue on page: Candidate in election ${electionIdString} has non-number 'voteCount'. Candidate data:`, dbCandidate);
         }
-
         return {
-          id: candidateIdString,
+          id: dbCandidate.id,
           name: dbCandidate.name,
           platform: dbCandidate.platform,
-          party: dbCandidate.party, // Party is now required
+          party: dbCandidate.party,
           imageUrl: dbCandidate.imageUrl,
-          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
+          voteCount: dbCandidate.voteCount,
           electionId: electionIdString,
         };
       }),

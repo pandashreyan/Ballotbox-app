@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { Election, ElectionResults } from '@/lib/types';
+import type { Election, ElectionResults, Candidate } from '@/lib/types';
 import { ResultsChart } from '@/components/ResultsChart';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -29,6 +29,7 @@ export default function ElectionResultsPage() {
       setIsLoading(true);
       setError(null);
       try {
+        // API route /api/elections/[electionId] is now force-dynamic
         const response = await fetch(`/api/elections/${electionId}`);
         if (!response.ok) {
           const errorData = await response.json();
@@ -42,7 +43,8 @@ export default function ElectionResultsPage() {
           results: election.candidates.map(candidate => ({
             candidateId: candidate.id,
             candidateName: candidate.name,
-            voteCount: candidate.voteCount || 0, 
+            // candidate.voteCount should now always be a number from the API
+            voteCount: candidate.voteCount, 
           })).sort((a,b) => b.voteCount - a.voteCount),
         };
         setResultsData(electionResults);
