@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users, Loader2 } from 'lucide-react';
+import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users, Loader2, LogIn } from 'lucide-react'; // Added LogIn
 import { useAuth, UserRole } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -86,30 +86,13 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center text-sm hover:bg-primary/80 focus-visible:ring-offset-primary focus-visible:ring-primary-foreground">
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  Logged out (Guest)
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <DropdownMenuLabel>Switch Mock Role</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleRoleChange('admin')}>
-                   <UserCog className="mr-2 h-4 w-4" />
-                  <span>Admin</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRoleChange('candidate')}>
-                  <UserCheck className="mr-2 h-4 w-4" />
-                  <span>Candidate</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRoleChange('voter')}>
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>Voter</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            // If not loading and no user, show Login button
+            <Button asChild variant="ghost" className="flex items-center text-sm hover:bg-primary/80 focus-visible:ring-offset-primary focus-visible:ring-primary-foreground">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Login
+              </Link>
+            </Button>
           )}
            <p className="text-xs text-primary-foreground/70 hidden md:block">
             (Mock Auth: Change role for testing)
