@@ -39,10 +39,11 @@ export async function POST(req: Request, { params }: { params: { electionId: str
       return NextResponse.json({ message: 'Election not found.' }, { status: 404 });
     }
     
-    // Optional: Add logic to check if election is still open for registration
     const now = new Date();
-    const endDate = new Date(election.endDate);
-    if (now > endDate) {
+    const electionEndDate = new Date(election.endDate);
+    electionEndDate.setHours(23, 59, 59, 999); // Consider the election concluded after the very end of its end date
+
+    if (now > electionEndDate) {
       return NextResponse.json({ message: 'This election has concluded. Registration is closed.' }, { status: 403 });
     }
 
@@ -72,3 +73,4 @@ export async function POST(req: Request, { params }: { params: { electionId: str
     return NextResponse.json({ message: error.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

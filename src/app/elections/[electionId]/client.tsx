@@ -158,22 +158,27 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     const now = new Date();
     const startDate = new Date(election.startDate);
     const endDate = new Date(election.endDate);
+    endDate.setHours(23, 59, 59, 999); // Election is ongoing throughout the end date
     return now >= startDate && now <= endDate;
   }, [election.startDate, election.endDate]);
 
   const isElectionConcluded = useMemo(() => {
     const now = new Date();
     const endDate = new Date(election.endDate);
+    endDate.setHours(23, 59, 59, 999); // Election is concluded *after* the end of the end date
     return now > endDate;
   }, [election.endDate]);
 
   const electionStatusMessage = useMemo(() => {
     const now = new Date();
     const startDate = new Date(election.startDate);
+    const electionEndDateForStatus = new Date(election.endDate);
+    electionEndDateForStatus.setHours(23, 59, 59, 999);
+
     if (now < startDate) return { type: "info", message: "This election has not started yet. Voting will be available from " + formatDate(election.startDate) + "." };
-    if (isElectionConcluded) return { type: "concluded", message: "This election has concluded. Voting is closed." };
+    if (now > electionEndDateForStatus) return { type: "concluded", message: "This election has concluded. Voting is closed." };
     return null; // Ongoing
-  }, [election.startDate, election.endDate, isElectionConcluded, formatDate]);
+  }, [election.startDate, election.endDate, formatDate]);
 
   if (isLoadingClientState) {
      return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election state...</div>;
