@@ -21,42 +21,60 @@ export interface AuthUser {
 
 const MOCK_USER_ROLE_STORAGE_KEY = 'ballotbox_mock_user_role';
 
+// Setup the global function once.
+if (typeof window !== 'undefined' && !(window as any)._setMockUserRoleInitialized) {
+  (window as any).setMockUserRole = (newRole: UserRole | null) => {
+    if (newRole === null || ['admin', 'candidate', 'voter'].includes(newRole)) {
+      localStorage.setItem(MOCK_USER_ROLE_STORAGE_KEY, newRole || '');
+      // Dispatch a custom event that useAuth can listen to for same-page updates,
+      // as 'storage' event doesn't reliably fire for the originating page.
+      window.dispatchEvent(new Event('mockAuthRoleChanged'));
+    } else {
+      console.error("Invalid role. Use 'admin', 'candidate', 'voter', or null.");
+    }
+  };
+  (window as any)._setMockUserRoleInitialized = true;
+}
+
+
 export function useAuth() {
   const [role, setRole] = useState<UserRole>(null); 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
 
-  useEffect(() => {
-    let determinedRole: UserRole = null;
+  const updateRoleFromStorage = () => {
     const storedRole = localStorage.getItem(MOCK_USER_ROLE_STORAGE_KEY) as UserRole;
+    let determinedRole: UserRole = null;
 
     if (['admin', 'candidate', 'voter'].includes(storedRole)) {
       determinedRole = storedRole;
     } else if (storedRole === '' || storedRole === null) { 
       determinedRole = null; 
-    } else {
-      determinedRole = 'voter';
-      localStorage.setItem(MOCK_USER_ROLE_STORAGE_KEY, 'voter'); 
+    } else { // Any other string, or unexpected value
+      determinedRole = 'voter'; // Default to voter
+      localStorage.setItem(MOCK_USER_ROLE_STORAGE_KEY, 'voter'); // And fix it in storage
     }
-    
     setRole(determinedRole);
+  };
+
+
+  useEffect(() => {
+    updateRoleFromStorage(); // Initial load from localStorage
     setIsLoadingAuth(false);
 
-    const handleStorageChange = () => {
-      let newDeterminedRole: UserRole = null;
-      const newStoredRole = localStorage.getItem(MOCK_USER_ROLE_STORAGE_KEY) as UserRole;
-      if (['admin', 'candidate', 'voter'].includes(newStoredRole)) {
-        newDeterminedRole = newStoredRole;
-      } else if (newStoredRole === '' || newStoredRole === null) {
-        newDeterminedRole = null;
-      } else {
-        newDeterminedRole = 'voter'; 
-      }
-      setRole(newDeterminedRole);
+    const handleStorageChange = () => { // For changes from other tabs/windows
+      updateRoleFromStorage();
+    };
+    
+    const handleMockAuthRoleChanged = () => { // For changes triggered by (window as any).setMockUserRole on the same page
+        updateRoleFromStorage();
     };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('mockAuthRoleChanged', handleMockAuthRoleChanged);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('mockAuthRoleChanged', handleMockAuthRoleChanged);
     };
   }, []); 
 
@@ -83,13 +101,13 @@ export function useAuth() {
       mockUser = {
         id: 'mock-user-id-voter',
         name: 'Mock Voter User',
-        fullName: 'Mock Voter User',
+        fullName: 'Mock Voter User', // Defaulting fullName to name for simplicity here
         role: 'voter',
-        dob: "", // Default as per your spec
-        email: "voter@example.com", // Mock email
-        nationalId: "", // Default as per your spec
-        isEligible: true, // Default as per your spec
-        isVerified: true, // Default as per your spec
+        dob: "", 
+        email: "voter@example.com", 
+        nationalId: "", 
+        isEligible: true, 
+        isVerified: true, 
       };
     } else {
       // Role is null, so user is guest
@@ -97,17 +115,6 @@ export function useAuth() {
     }
   }
   
-  if (typeof window !== 'undefined') {
-    (window as any).setMockUserRole = (newRole: UserRole | null) => {
-      if (newRole === null || ['admin', 'candidate', 'voter'].includes(newRole)) {
-        localStorage.setItem(MOCK_USER_ROLE_STORAGE_KEY, newRole || '');
-        window.location.reload(); 
-      } else {
-        console.error("Invalid role. Use 'admin', 'candidate', 'voter', or null.");
-      }
-    };
-  }
-
   return {
     user: mockUser,
     isLoadingAuth: isLoadingAuth,
