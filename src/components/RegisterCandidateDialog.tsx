@@ -65,7 +65,7 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
     setIsRegistering(true);
     setRegistrationError(null);
     try {
-      const response = await fetch(\`/api/elections/\${data.electionId}/register\`, {
+      const response = await fetch(`/api/elections/${data.electionId}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: data.name, platform: data.platform, imageUrl: data.imageUrl }),
@@ -74,12 +74,12 @@ export function RegisterCandidateDialog({ isOpen, onOpenChange, elections, onCan
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || \`Server responded with \${response.status}\`);
+        throw new Error(result.message || `Server responded with ${response.status}`);
       }
 
       toast({
         title: "Candidate Registered!",
-        description: \`\${result.candidate.name} has been successfully registered.\`,
+        description: `${result.candidate.name} has been successfully registered.`,
       });
       
       form.reset();

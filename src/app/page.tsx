@@ -33,7 +33,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             candidateIdString = candidate._id.toString();
           } 
           else {
-            console.warn(\`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.\`);
+            console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
             candidateIdString = crypto.randomUUID();
           }
           return {
@@ -51,7 +51,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
     });
   } catch (e: any)  {
     console.error('Failed to fetch elections:', e);
-    return { error: \`Failed to load elections. ${e.message || 'Please try again later.'}\` };
+    return { error: `Failed to load elections. ${e.message || 'Please try again later.'}` };
   }
 }
 
