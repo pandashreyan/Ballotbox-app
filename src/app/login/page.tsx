@@ -92,7 +92,7 @@ export default function LoginPage() {
         title: "Logged in as Voter (Mock)",
         description: "Your details were noted (mock process). You are now logged in.",
       })
-      router.push('/')
+      router.push('/') // Navigate to homepage
     } else {
       toast({
         title: "Mock Login Function Unavailable",
@@ -283,5 +283,4 @@ export default function LoginPage() {
     </div>
   )
 }
-
     
