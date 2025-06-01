@@ -4,14 +4,21 @@ import { ObjectId } from 'mongodb';
 import type { Election as ElectionType, Candidate as CandidateType } from '@/lib/types';
 import { ElectionDetailClient } from './client';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react'; // For a loading state, though notFound is primary
 
 // Type for documents coming from MongoDB before transformation
+interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
+  _id?: ObjectId | string; // Can be ObjectId from DB or string if already processed
+  id?: ObjectId | string; // Can be ObjectId or string
+  name: string;
+  platform: string;
+  imageUrl?: string;
+  voteCount?: number;
+}
 interface ElectionDoc extends Omit<ElectionType, 'id' | 'candidates' | 'startDate' | 'endDate'> {
   _id: ObjectId;
-  startDate: Date | string; // MongoDB might store as ISODate or string from API
-  endDate: Date | string;   // MongoDB might store as ISODate or string from API
-  candidates: Array<Omit<CandidateType, 'id'> & { _id?: ObjectId | string, id?: ObjectId | string }>;
+  startDate: Date | string;
+  endDate: Date | string;
+  candidates: Array<CandidateDoc>;
 }
 
 
@@ -32,40 +39,46 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
     }
 
     const { _id, ...rest } = electionDoc;
+    const electionIdString = _id.toString();
+
     return {
-      id: _id.toString(),
+      id: electionIdString,
       name: rest.name,
       description: rest.description,
       startDate: new Date(rest.startDate).toISOString(), // Ensure ISO string format
       endDate: new Date(rest.endDate).toISOString(),     // Ensure ISO string format
-      candidates: rest.candidates.map(candidate => {
+      candidates: rest.candidates.map(dbCandidate => {
         let candidateIdString: string;
-        // Prioritize existing string 'id', then '_id', then generate if necessary
-        if (candidate.id && typeof candidate.id === 'string') {
-          candidateIdString = candidate.id;
-        } else if (candidate._id) {
-          candidateIdString = candidate._id.toString();
-        } else if (candidate.id) { // Could be ObjectId if not string
-           candidateIdString = candidate.id.toString();
-        }
-        else {
-          console.warn(`Candidate in election ${_id.toString()} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
+
+        // Determine the definitive string ID for the candidate
+        if (dbCandidate.id && typeof dbCandidate.id === 'string') {
+          candidateIdString = dbCandidate.id;
+        } else if (dbCandidate.id) { // Handles ObjectId or other types for 'id'
+          candidateIdString = dbCandidate.id.toString();
+        } else if (dbCandidate._id) { // Fallback to _id if 'id' is missing or not primary
+          candidateIdString = dbCandidate._id.toString();
+        } else {
+          // This case should ideally not happen if data is inserted correctly
+          console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
           candidateIdString = crypto.randomUUID();
         }
         
+        // Construct the candidate object explicitly for the client
+        // ensuring all fields are serializable and match CandidateType
         return {
-          ...candidate,
-          name: candidate.name, // ensure name is present
-          platform: candidate.platform, // ensure platform is present
-          electionId: _id.toString(), // ensure electionId is set
           id: candidateIdString,
-          voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
+          name: dbCandidate.name,
+          platform: dbCandidate.platform,
+          imageUrl: dbCandidate.imageUrl,
+          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
+          electionId: electionIdString, // Add parent election ID
         };
       }),
     };
   } catch (e) {
     console.error('Failed to fetch election:', e);
-    return null;
+    // Optionally, rethrow or handle more gracefully
+    throw new Error(`Failed to fetch election data: ${(e as Error).message}`);
   }
 }
 
