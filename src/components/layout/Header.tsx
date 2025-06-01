@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users } from 'lucide-react';
+import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users, Loader2 } from 'lucide-react';
 import { useAuth, UserRole } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Header() {
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
 
   const handleRoleChange = (newRole: UserRole | 'logout') => {
     if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
@@ -28,6 +28,8 @@ export function Header() {
   };
 
   const getRoleIcon = (role: UserRole) => {
+    // Ensure role is not null before switching, or handle null explicitly if needed
+    if (role === null) return <UserCircle className="mr-2 h-4 w-4" />;
     switch (role) {
       case 'admin':
         return <UserCog className="mr-2 h-4 w-4" />;
@@ -48,7 +50,12 @@ export function Header() {
           BallotBox
         </Link>
         <div className="flex items-center gap-4">
-          {user ? (
+          {isLoadingAuth ? (
+            <Button variant="ghost" className="flex items-center text-sm" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading User...
+            </Button>
+          ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center text-sm hover:bg-primary/80 focus-visible:ring-offset-primary focus-visible:ring-primary-foreground">
