@@ -9,6 +9,7 @@ interface CandidateInDB extends Omit<AppCandidateType, 'electionId' | 'voteCount
   id: string;       // Candidate's custom string ID
   voteCount: number; // voteCount is a number in DB
   electionId: string; // Stored with candidate for reference, though parent electionId is primary
+  party: string; // Ensure party is included
 }
 
 interface ElectionInDB {
@@ -72,5 +73,33 @@ export async function GET(request: Request, { params }: { params: { electionId: 
   } catch (e: any) {
     console.error('Failed to fetch election by ID:', e);
     return NextResponse.json({ message: `Failed to fetch election data: ${e.message}` }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: { electionId: string } }) {
+  const { electionId } = params;
+
+  // In a real app, add authentication here to ensure only admins can delete
+  // For now, client-side UI controls this, but API should be secured.
+
+  if (!ObjectId.isValid(electionId)) {
+    return NextResponse.json({ message: 'Invalid election ID format.' }, { status: 400 });
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const electionsCollection = db.collection('elections');
+
+    const result = await electionsCollection.deleteOne({ _id: new ObjectId(electionId) });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ message: 'Election not found or already deleted.' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Election deleted successfully.' }, { status: 200 });
+  } catch (e: any) {
+    console.error('Failed to delete election:', e);
+    return NextResponse.json({ message: `Failed to delete election: ${e.message}` }, { status: 500 });
   }
 }
