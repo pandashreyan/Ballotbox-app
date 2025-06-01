@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ElectionResults } from '@/lib/types';
@@ -22,7 +23,7 @@ export function ResultsChart({ data }: ResultsChartProps) {
         <CardContent>
           <p className="text-muted-foreground">No results available or no votes cast yet.</p>
         </CardContent>
-      </Card>>
+      </Card>
     );
   }
 
