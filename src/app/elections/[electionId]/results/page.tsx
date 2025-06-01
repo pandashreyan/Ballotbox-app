@@ -1,12 +1,12 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { mockElections } from '@/lib/mockData';
 import type { Election, ElectionResults } from '@/lib/types';
 import { ResultsChart } from '@/components/ResultsChart';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ElectionResultsPage() {
@@ -16,33 +16,66 @@ export default function ElectionResultsPage() {
 
   const [resultsData, setResultsData] = useState<ElectionResults | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const foundElection = mockElections.find(e => e.id === electionId);
-    if (foundElection) {
-      // Load votes from localStorage
-      const storedVotesString = localStorage.getItem(`ballotbox_votes_${electionId}`);
-      const votesCount: { [candidateId: string]: number } = storedVotesString ? JSON.parse(storedVotesString) : {};
-
-      const electionResults: ElectionResults = {
-        electionId: foundElection.id,
-        electionName: foundElection.name,
-        results: foundElection.candidates.map(candidate => ({
-          candidateId: candidate.id,
-          candidateName: candidate.name,
-          voteCount: votesCount[candidate.id] || 0, // Use stored votes or default to 0
-        })).sort((a,b) => b.voteCount - a.voteCount), // Sort by vote count descending
-      };
-      setResultsData(electionResults);
-    } else {
-      // Handle election not found
-      setResultsData(null); // Or redirect
+    if (!electionId) {
+      setIsLoading(false);
+      setError("Election ID is missing.");
+      return;
     }
-    setIsLoading(false);
+
+    const fetchElectionResults = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/elections/${electionId}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch election data: ${response.status}`);
+        }
+        const election: Election = await response.json();
+
+        const electionResults: ElectionResults = {
+          electionId: election.id,
+          electionName: election.name,
+          results: election.candidates.map(candidate => ({
+            candidateId: candidate.id,
+            candidateName: candidate.name,
+            voteCount: candidate.voteCount || 0, 
+          })).sort((a,b) => b.voteCount - a.voteCount),
+        };
+        setResultsData(electionResults);
+
+      } catch (err: any) {
+        console.error("Error fetching election results:", err);
+        setError(err.message || "Could not load election results.");
+        setResultsData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchElectionResults();
   }, [electionId]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><ArrowLeft className="animate-spin h-8 w-8 text-primary" /> Loading results...</div>;
+    return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading results...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-semibold text-destructive">Error Loading Results</h1>
+        <Alert variant="destructive" className="max-w-md mx-auto my-4">
+          <AlertTitle>Loading Failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={() => router.push(`/elections/${electionId}`)} className="mt-4">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Election
+        </Button>
+      </div>
+    );
   }
 
   if (!resultsData) {
@@ -71,7 +104,7 @@ export default function ElectionResultsPage() {
         <Alert className="mt-4">
           <AlertTitle>No Votes Yet</AlertTitle>
           <AlertDescription>
-            There are currently no votes recorded for this election. Results will be displayed once votes are cast.
+            There are currently no votes recorded for this election in the database. Results will be displayed once votes are cast and persisted.
           </AlertDescription>
         </Alert>
       )}
