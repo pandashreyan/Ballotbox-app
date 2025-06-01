@@ -3,9 +3,8 @@ import { ElectionCard } from '@/components/ElectionCard';
 import type { Election } from '@/lib/types';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, PlusCircle } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
+import { PageActions } from '@/components/PageActions'; // Changed import
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -22,36 +21,30 @@ async function getElections(): Promise<Election[] | { error: string }> {
         ...rest,
         candidates: rest.candidates.map(candidate => {
           let candidateIdString: string;
-          // Check for existing string ID first
           if (candidate.id && typeof candidate.id === 'string') {
             candidateIdString = candidate.id;
           } 
-          // Then check if candidate.id is an ObjectId or can be stringified
           else if (candidate.id && typeof candidate.id.toString === 'function') {
             candidateIdString = candidate.id.toString();
           } 
-          // Fallback to _id if it exists (common for MongoDB subdocs)
           // @ts-ignore _id may exist
           else if (candidate._id && typeof candidate._id.toString === 'function') {
           // @ts-ignore _id may exist
             candidateIdString = candidate._id.toString();
           } 
-          // If no usable ID, generate a temporary one and warn
           else {
             console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
             candidateIdString = crypto.randomUUID();
           }
           return {
-            // Explicitly construct the candidate object to avoid passing non-serializable fields
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
-            electionId: electionIdString, // ensure electionId is present
+            electionId: electionIdString, 
           };
         }),
-        // Ensure dates are ISO strings if they are Date objects
         startDate: rest.startDate instanceof Date ? rest.startDate.toISOString() : rest.startDate,
         endDate: rest.endDate instanceof Date ? rest.endDate.toISOString() : rest.endDate,
       };
@@ -88,6 +81,13 @@ export default async function HomePage() {
 
   const elections: Election[] = electionsResult;
 
+  const nonConcludedElections = elections.filter(election => {
+    const now = new Date();
+    const endDate = new Date(election.endDate);
+    endDate.setHours(23, 59, 59, 999);
+    return now <= endDate;
+  });
+
   return (
     <div className="space-y-8">
       <section className="text-center py-8">
@@ -104,11 +104,7 @@ export default async function HomePage() {
           <h2 className="text-3xl font-headline font-semibold">
             Available Elections
           </h2>
-          <Button asChild>
-            <Link href="/create-election">
-              <PlusCircle className="mr-2 h-5 w-5" /> Create Election
-            </Link>
-          </Button>
+          <PageActions nonConcludedElections={nonConcludedElections} />
         </div>
         {elections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
