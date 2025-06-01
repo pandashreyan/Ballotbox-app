@@ -16,35 +16,49 @@ async function getElections(): Promise<Election[] | { error: string }> {
 
     return electionsData.map((electionDoc) => {
       const { _id, ...rest } = electionDoc;
+      const electionIdString = _id.toString();
       return {
-        id: _id.toString(),
+        id: electionIdString,
         ...rest,
         candidates: rest.candidates.map(candidate => {
           let candidateIdString: string;
+          // Check for existing string ID first
           if (candidate.id && typeof candidate.id === 'string') {
             candidateIdString = candidate.id;
-          } else if (candidate.id) {
+          } 
+          // Then check if candidate.id is an ObjectId or can be stringified
+          else if (candidate.id && typeof candidate.id.toString === 'function') {
             candidateIdString = candidate.id.toString();
-          // @ts-ignore _id may exist if candidates were separate documents or subdocs with ObjectIds
-          } else if (candidate._id) {
+          } 
+          // Fallback to _id if it exists (common for MongoDB subdocs)
+          // @ts-ignore _id may exist
+          else if (candidate._id && typeof candidate._id.toString === 'function') {
           // @ts-ignore _id may exist
             candidateIdString = candidate._id.toString();
-          } else {
-            console.warn(`Candidate in election ${_id.toString()} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
+          } 
+          // If no usable ID, generate a temporary one and warn
+          else {
+            console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
             candidateIdString = crypto.randomUUID();
           }
           return {
-            ...candidate,
+            // Explicitly construct the candidate object to avoid passing non-serializable fields
             id: candidateIdString,
-            // Ensure voteCount is a number, defaulting to 0 if not present
+            name: candidate.name,
+            platform: candidate.platform,
+            imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
+            electionId: electionIdString, // ensure electionId is present
           };
         }),
+        // Ensure dates are ISO strings if they are Date objects
+        startDate: rest.startDate instanceof Date ? rest.startDate.toISOString() : rest.startDate,
+        endDate: rest.endDate instanceof Date ? rest.endDate.toISOString() : rest.endDate,
       };
     });
-  } catch (e) {
+  } catch (e: any)  {
     console.error('Failed to fetch elections:', e);
-    return { error: 'Failed to load elections. Please try again later.' };
+    return { error: `Failed to load elections. ${e.message || 'Please try again later.'}` };
   }
 }
 

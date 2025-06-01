@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker" // We'll create this
+import { DatePicker } from "@/components/ui/date-picker" 
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -41,6 +41,10 @@ export default function CreateElectionPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    console.log("CreateElectionPage component has mounted.");
+  }, []);
 
   const form = useForm<CreateElectionFormValues>({
     resolver: zodResolver(createElectionSchema),
@@ -76,14 +80,23 @@ export default function CreateElectionPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Server responded with ${response.status}`);
+        // Try to parse out specific field errors if available
+        let message = errorData.message || `Server responded with ${response.status}`;
+        if (errorData.errors && typeof errorData.errors === 'object') {
+          const fieldErrors = Object.entries(errorData.errors)
+            // @ts-ignore
+            .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+            .join('; ');
+          if (fieldErrors) message += ` Details: ${fieldErrors}`;
+        }
+        throw new Error(message);
       }
 
       toast({
         title: "Election Created!",
         description: `The election "${data.name}" has been successfully created.`,
       });
-      router.push('/'); // Redirect to homepage
+      router.push('/'); 
     } catch (error: any) {
       console.error("Failed to create election:", error);
       setServerError(error.message || "An unexpected error occurred. Please try again.");
