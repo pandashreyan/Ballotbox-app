@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 const candidateSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),
-  party: z.string().min(2, { message: "Party name must be at least 2 characters."}).optional().or(z.literal('')),
+  party: z.string().min(2, { message: "Party name must be at least 2 characters."}), // Made required
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 })
 
@@ -80,7 +80,7 @@ export default function CreateElectionPage() {
         endDate: data.endDate.toISOString(),
         candidates: data.candidates.map(c => ({
           ...c,
-          party: c.party || undefined, // Ensure empty string becomes undefined
+          // party: c.party, // Party is now required
         }))
       };
 
@@ -240,7 +240,7 @@ export default function CreateElectionPage() {
                     {form.formState.errors.candidates?.[index]?.name && <p className="text-sm text-destructive">{form.formState.errors.candidates?.[index]?.name?.message}</p>}
                   </div>
                    <div className="space-y-2">
-                    <Label htmlFor={`candidates.${index}.party`}>Party Name (Optional)</Label>
+                    <Label htmlFor={`candidates.${index}.party`}>Party Name</Label>
                     <Input id={`candidates.${index}.party`} {...form.register(`candidates.${index}.party`)} placeholder="Candidate's Political Party" />
                     {form.formState.errors.candidates?.[index]?.party && <p className="text-sm text-destructive">{form.formState.errors.candidates?.[index]?.party?.message}</p>}
                   </div>

@@ -40,7 +40,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
-            party: candidate.party || undefined,
+            party: candidate.party, // Party is now required
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
             electionId: electionIdString,

@@ -10,7 +10,7 @@ interface CandidateDoc extends Omit<CandidateType, 'id' | 'electionId'> {
   id?: ObjectId | string;
   name: string;
   platform: string;
-  party?: string;
+  party: string; // Party is required
   imageUrl?: string;
   voteCount?: number;
 }
@@ -66,7 +66,7 @@ export async function GET(request: Request, { params }: { params: { electionId: 
           id: candidateIdString,
           name: dbCandidate.name,
           platform: dbCandidate.platform,
-          party: dbCandidate.party || undefined,
+          party: dbCandidate.party, // Party is now required
           imageUrl: dbCandidate.imageUrl,
           voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
           electionId: electionIdString,

@@ -8,7 +8,7 @@ import type { Election as ElectionType } from '@/lib/types'; // For return type
 const candidateSchema = z.object({
   name: z.string().min(2),
   platform: z.string().min(10),
-  party: z.string().min(2).optional().or(z.literal('')),
+  party: z.string().min(2, { message: "Party name must be at least 2 characters." }), // Made required
   imageUrl: z.string().url().optional().or(z.literal('')),
 });
 
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       id: new ObjectId().toString(),
       electionId: electionId.toString(),
       voteCount: 0,
-      party: candidate.party || undefined,
+      // party: candidate.party, // Party is now required and should be present
       imageUrl: candidate.imageUrl || undefined,
     }));
 
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
             endDate: new Date(restOfCreatedElection.endDate).toISOString(),
             candidates: restOfCreatedElection.candidates.map(c => ({
                 ...c,
-                party: c.party || undefined,
+                // party: c.party, // Party is now required
             }))
         } as ElectionType
     }, { status: 201 });
@@ -121,7 +121,7 @@ export async function GET() {
             ...candidate,
             id: candidateIdString,
             electionId: electionIdString,
-            party: candidate.party || undefined,
+            party: candidate.party, // Party is now required
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
           };
         }),

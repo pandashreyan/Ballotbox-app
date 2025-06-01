@@ -7,7 +7,7 @@ import * as z from 'zod';
 const candidateRegistrationSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),
-  party: z.string().min(2).optional().or(z.literal('')),
+  party: z.string().min(2, { message: "Party name must be at least 2 characters." }), // Made required
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 });
 
@@ -51,7 +51,7 @@ export async function POST(req: Request, { params }: { params: { electionId: str
       id: new ObjectId().toString(),
       name: candidateData.name,
       platform: candidateData.platform,
-      party: candidateData.party || undefined,
+      party: candidateData.party, // Party is now required
       imageUrl: candidateData.imageUrl || undefined,
       voteCount: 0,
       electionId: electionId,

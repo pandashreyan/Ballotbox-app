@@ -38,7 +38,7 @@ export function CandidateCard({ candidate, onVote, hasVoted, votedForThisCandida
           )}
         </div>
         <CardTitle className="text-lg font-headline">{candidate.name}</CardTitle>
-        {candidate.party && (
+        {candidate.party && ( // Still good to check for empty string for display purposes
           <p className="text-xs text-muted-foreground">{candidate.party}</p>
         )}
         {votedForThisCandidate && (

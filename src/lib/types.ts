@@ -4,7 +4,7 @@ export interface Candidate {
   name: string;
   electionId: string;
   platform: string;
-  party?: string; // New field for party affiliation
+  party: string; // Changed from optional to required
   imageUrl?: string;
   voteCount?: number; // Optional, primarily for results display
 }
