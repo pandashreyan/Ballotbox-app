@@ -15,17 +15,52 @@ interface ElectionDetailClientProps {
   initialElection: Election;
 }
 
+interface ClientElectionStatus {
+  type: "info" | "concluded" | "ongoing";
+  message: string;
+}
+
 export function ElectionDetailClient({ initialElection }: ElectionDetailClientProps) {
   const router = useRouter();
   const { toast } = useToast();
   
   const [election, setElection] = useState<Election>(initialElection);
   const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null);
-  const [isLoadingClientState, setIsLoadingClientState] = useState(true);
+  const [isLoadingClientState, setIsLoadingClientState] = useState(true); // For localStorage access
+
+  const [clientFormattedStartDate, setClientFormattedStartDate] = useState<string | null>(null);
+  const [clientFormattedEndDate, setClientFormattedEndDate] = useState<string | null>(null);
+  const [clientIsElectionOngoing, setClientIsElectionOngoing] = useState<boolean | null>(null);
+  const [clientElectionStatusMessage, setClientElectionStatusMessage] = useState<ClientElectionStatus | null>(null);
+  const [isClientMounted, setIsClientMounted] = useState(false);
 
   const electionId = initialElection.id;
 
   useEffect(() => {
+    setIsClientMounted(true); // Component has mounted
+
+    // Format dates on client
+    const clientFormatDate = (dateString: string | undefined) => dateString ? new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+    setClientFormattedStartDate(clientFormatDate(election.startDate));
+    setClientFormattedEndDate(clientFormatDate(election.endDate));
+
+    // Determine election status on client
+    const now = new Date();
+    const startDate = new Date(election.startDate);
+    const endDate = new Date(election.endDate);
+    endDate.setHours(23, 59, 59, 999); 
+    const ongoing = now >= startDate && now <= endDate;
+    setClientIsElectionOngoing(ongoing);
+
+    if (now < startDate) {
+      setClientElectionStatusMessage({ type: "info", message: "This election has not started yet. Voting will be available from " + clientFormatDate(election.startDate) + "." });
+    } else if (now > endDate) {
+      setClientElectionStatusMessage({ type: "concluded", message: "This election has concluded. Voting is closed." });
+    } else {
+      setClientElectionStatusMessage({ type: "ongoing", message: "This election is currently ongoing."}); // Or null if no message needed for ongoing
+    }
+
+    // LocalStorage logic
     const storedVotedState = localStorage.getItem(`ballotbox_voted_${electionId}`);
     if (storedVotedState) {
       setVotedCandidateId(storedVotedState);
@@ -42,11 +77,11 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         })),
       }));
     }
-    setIsLoadingClientState(false);
-  }, [electionId]);
+    setIsLoadingClientState(false); // Done with localStorage
+  }, [electionId, election.startDate, election.endDate]); // Dependencies for date/status calculations
 
   const handleVote = (candidateId: string) => {
-    if (votedCandidateId || !isElectionOngoing) return;
+    if (votedCandidateId || !clientIsElectionOngoing) return;
 
     setVotedCandidateId(candidateId);
     localStorage.setItem(`ballotbox_voted_${electionId}`, candidateId);
@@ -72,30 +107,14 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       action: <CheckCircle className="text-green-500" />,
     });
   };
-
-  const formatDate = (dateString: string | undefined) => dateString ? new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
   
-  const isElectionOngoing = useMemo(() => {
-    const now = new Date();
-    const startDate = new Date(election.startDate);
-    const endDate = new Date(election.endDate);
-    endDate.setHours(23, 59, 59, 999); 
-    return now >= startDate && now <= endDate;
-  }, [election.startDate, election.endDate]);
+  // Fallback for server render or before client mount
+  const serverFormattedStartDate = election.startDate.split('T')[0];
+  const serverFormattedEndDate = election.endDate.split('T')[0];
 
-  const electionStatusMessage = useMemo(() => {
-    const now = new Date();
-    const startDate = new Date(election.startDate);
-    const electionEndDateForStatus = new Date(election.endDate);
-    electionEndDateForStatus.setHours(23, 59, 59, 999);
 
-    if (now < startDate) return { type: "info", message: "This election has not started yet. Voting will be available from " + formatDate(election.startDate) + "." };
-    if (now > electionEndDateForStatus) return { type: "concluded", message: "This election has concluded. Voting is closed." };
-    return null; 
-  }, [election.startDate, election.endDate, formatDate]);
-
-  if (isLoadingClientState) {
-     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election state...</div>;
+  if (isLoadingClientState || !isClientMounted) {
+     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election details...</div>;
   }
 
   return (
@@ -110,7 +129,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 <h1 className="text-3xl font-headline font-bold text-primary mb-2">{election.name}</h1>
                 <p className="text-muted-foreground mb-1 flex items-center">
                 <CalendarDays className="mr-2 h-4 w-4" /> 
-                {formatDate(election.startDate)} - {formatDate(election.endDate)}
+                {clientFormattedStartDate || serverFormattedStartDate} - {clientFormattedEndDate || serverFormattedEndDate}
                 </p>
                 <p className="text-sm text-foreground/80 mb-4">{election.description}</p>
             </div>
@@ -124,17 +143,20 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </div>
       </section>
 
-      {electionStatusMessage && (
-        <Alert variant={electionStatusMessage.type === "concluded" ? "default" : "default"} className={electionStatusMessage.type === "concluded" ? "bg-gray-100 border-gray-300 text-gray-700" : "bg-blue-100 border-blue-300 text-blue-700"}>
+      {clientElectionStatusMessage && clientElectionStatusMessage.type !== "ongoing" && (
+        <Alert 
+          variant={clientElectionStatusMessage.type === "concluded" ? "default" : "default"} 
+          className={clientElectionStatusMessage.type === "concluded" ? "bg-gray-100 border-gray-300 text-gray-700" : "bg-blue-100 border-blue-300 text-blue-700"}
+        >
           <Info className="h-4 w-4" />
-          <AlertTitle>{electionStatusMessage.type === "concluded" ? "Election Concluded" : "Election Information"}</AlertTitle>
+          <AlertTitle>{clientElectionStatusMessage.type === "concluded" ? "Election Concluded" : "Election Information"}</AlertTitle>
           <AlertDescription>
-            {electionStatusMessage.message}
+            {clientElectionStatusMessage.message}
           </AlertDescription>
         </Alert>
       )}
 
-      {votedCandidateId && isElectionOngoing && (
+      {votedCandidateId && clientIsElectionOngoing && (
          <Alert variant="default" className="bg-accent/30 border-accent text-accent-foreground">
           <CheckCircle className="h-4 w-4" />
           <AlertTitle>Vote Recorded</AlertTitle>
@@ -155,12 +177,12 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 onVote={handleVote}
                 hasVoted={!!votedCandidateId}
                 votedForThisCandidate={votedCandidateId === candidate.id}
-                isElectionOngoing={isElectionOngoing}
+                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing} // Default to false if not yet determined
               />
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No candidates are listed for this election yet. You can register one if the election is ongoing!</p>
+          <p className="text-muted-foreground">No candidates are listed for this election yet.</p>
         )}
       </section>
     </div>
