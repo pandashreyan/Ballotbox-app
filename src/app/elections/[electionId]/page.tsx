@@ -50,34 +50,32 @@ async function getElectionById(id: string): Promise<ElectionType | null> {
       candidates: rest.candidates.map(dbCandidate => {
         let candidateIdString: string;
 
-        // Determine the definitive string ID for the candidate
         if (dbCandidate.id && typeof dbCandidate.id === 'string') {
           candidateIdString = dbCandidate.id;
-        } else if (dbCandidate.id) { // Handles ObjectId or other types for 'id'
+        } else if (dbCandidate.id instanceof ObjectId) { 
           candidateIdString = dbCandidate.id.toString();
-        } else if (dbCandidate._id) { // Fallback to _id if 'id' is missing or not primary
+        } else if (dbCandidate._id instanceof ObjectId) { 
           candidateIdString = dbCandidate._id.toString();
-        } else {
-          // This case should ideally not happen if data is inserted correctly
+        } else if (dbCandidate._id && typeof dbCandidate._id === 'string') {
+            candidateIdString = dbCandidate._id;
+        }
+         else {
           console.warn(`Candidate in election ${electionIdString} is missing a valid 'id' or '_id'. Assigning a temporary UUID.`);
           candidateIdString = crypto.randomUUID();
         }
         
-        // Construct the candidate object explicitly for the client
-        // ensuring all fields are serializable and match CandidateType
         return {
           id: candidateIdString,
           name: dbCandidate.name,
           platform: dbCandidate.platform,
           imageUrl: dbCandidate.imageUrl,
-          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0,
-          electionId: electionIdString, // Add parent election ID
+          voteCount: typeof dbCandidate.voteCount === 'number' ? dbCandidate.voteCount : 0, // Ensure voteCount is a number
+          electionId: electionIdString,
         };
       }),
     };
   } catch (e) {
     console.error('Failed to fetch election:', e);
-    // Optionally, rethrow or handle more gracefully
     throw new Error(`Failed to fetch election data: ${(e as Error).message}`);
   }
 }
@@ -91,3 +89,4 @@ export default async function ElectionDetailPage({ params }: { params: { electio
 
   return <ElectionDetailClient initialElection={election} />;
 }
+
