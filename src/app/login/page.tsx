@@ -3,58 +3,67 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { LogIn, AlertCircle, Newspaper, Info } from "lucide-react" // Added Newspaper and Info icons
+import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog } from "lucide-react"
 import Link from "next/link"
-
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(1, { message: "Password is required." }), // Simple validation for mock
-})
-
-type LoginFormValues = z.infer<typeof loginSchema>
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { UserRole } from "@/hooks/useAuth"
 
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = React.useState(false)
-  const [serverError, setServerError] = React.useState<string | null>(null)
+  const [selectedRole, setSelectedRole] = React.useState<UserRole | ''>('');
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
+  const handleLoginAsRole = async () => {
+    if (!selectedRole) {
+      toast({
+        title: "No Role Selected",
+        description: "Please select a role to log in as.",
+        variant: "destructive",
+      })
+      return
+    }
 
-  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true)
-    setServerError(null)
-    console.log("Login form submitted (mock):", data)
+    console.log("Login attempt with role (mock):", selectedRole)
 
     // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 500))
 
-    // Mock success
-    toast({
-      title: "Login Attempted (Mock)",
-      description: "This is a mock login. Real authentication is not implemented. Please use the header to switch roles.",
-    })
-    
-    // In a real app, you would set auth state here.
-    // For this mock, we just redirect.
-    router.push('/')
-
+    if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
+      (window as any).setMockUserRole(selectedRole);
+      toast({
+        title: `Logged in as ${selectedRole} (Mock)`,
+        description: "You have successfully switched your mock role.",
+      })
+      router.push('/')
+    } else {
+      toast({
+        title: "Mock Login Function Unavailable",
+        description: "Could not set mock user role.",
+        variant: "destructive",
+      })
+    }
     setIsLoading(false)
   }
+
+  const getRoleIcon = (role: UserRole | '') => {
+    if (!role) return <LogIn className="mr-2 h-7 w-7" />;
+    switch (role) {
+      case 'admin':
+        return <UserCog className="mr-2 h-5 w-5" />;
+      case 'candidate':
+        return <UserCheck className="mr-2 h-5 w-5" />;
+      case 'voter':
+        return <Users className="mr-2 h-5 w-5" />;
+      default:
+        return <LogIn className="mr-2 h-7 w-7" />;
+    }
+  };
 
   return (
     <div className="container mx-auto py-12 px-4">
@@ -64,63 +73,46 @@ export default function LoginPage() {
           <Card className="w-full max-w-md shadow-xl">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-headline text-primary flex items-center justify-center">
-                <LogIn className="mr-2 h-7 w-7" /> Login to BallotBox
+                {getRoleIcon(selectedRole)} Select Role to Login
               </CardTitle>
-              <CardDescription>Enter your credentials to access your account.</CardDescription>
+              <CardDescription>Choose a mock user role to continue.</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {serverError && (
-                  <div className="bg-destructive/10 p-3 rounded-md flex items-center text-sm text-destructive">
-                    <AlertCircle className="mr-2 h-4 w-4" />
-                    {serverError}
-                  </div>
-                )}
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    {...form.register("email")}
-                    autoComplete="email"
-                  />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
+                  <Label htmlFor="role-select">User Role</Label>
+                  <Select value={selectedRole || ''} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+                    <SelectTrigger id="role-select" className="w-full">
+                      <SelectValue placeholder="Select a role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">
+                        <div className="flex items-center">
+                          <UserCog className="mr-2 h-4 w-4" /> Admin
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="candidate">
+                        <div className="flex items-center">
+                          <UserCheck className="mr-2 h-4 w-4" /> Candidate
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="voter">
+                        <div className="flex items-center">
+                          <Users className="mr-2 h-4 w-4" /> Voter
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    {...form.register("password")}
-                    autoComplete="current-password"
-                  />
-                  {form.formState.errors.password && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
-
-                <Button type="submit" disabled={isLoading} className="w-full" size="lg">
-                  {isLoading ? "Logging in..." : "Login"}
+                <Button onClick={handleLoginAsRole} disabled={isLoading || !selectedRole} className="w-full" size="lg">
+                  {isLoading ? "Logging in..." : "Login as Selected Role"}
                 </Button>
-              </form>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col items-center text-sm">
               <p className="text-muted-foreground">
-                Don&apos;t have an account? Registration is currently mocked.
-              </p>
-              <p className="text-muted-foreground mt-1">
-                Use the header controls to simulate different user roles.
+                This is a mock login to simulate different user perspectives.
               </p>
               <Button variant="link" asChild className="mt-2">
                 <Link href="/">Back to Home</Link>
@@ -143,7 +135,7 @@ export default function LoginPage() {
                 <div>
                   <h3 className="font-semibold text-lg">Voter Registration Deadline Approaching</h3>
                   <p className="text-muted-foreground text-sm">Published on: October 25, 2024</p>
-                  <p className="mt-1">Make sure you're registered to vote before the upcoming deadline on November 1st. Check your registration status today!</p>
+                  <p className="mt-1">Make sure you&apos;re registered to vote before the upcoming deadline on November 1st. Check your registration status today!</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg">New Polling Locations Announced</h3>
