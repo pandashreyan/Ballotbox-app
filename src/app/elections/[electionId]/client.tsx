@@ -7,7 +7,7 @@ import type { Election, Candidate } from '@/lib/types';
 import { CandidateCard } from '@/components/CandidateCard';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth'; 
 import { ArrowLeft, BarChart3, CalendarDays, CheckCircle, Info, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -24,7 +24,7 @@ interface ClientElectionStatus {
 export function ElectionDetailClient({ initialElection }: ElectionDetailClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user from auth hook
+  const { user } = useAuth(); 
   
   const [election, setElection] = useState<Election>(initialElection);
   const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null);
@@ -65,17 +65,18 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       setVotedCandidateId(storedVotedState);
     }
 
-    const storedVotes = localStorage.getItem(`ballotbox_votes_${electionId}`);
-    if (storedVotes) {
-      const votes = JSON.parse(storedVotes) as Record<string, number>;
-      setElection(prevElection => ({
-        ...prevElection,
-        candidates: prevElection.candidates.map(c => ({
-          ...c,
-          voteCount: votes[c.id] || c.voteCount || 0,
-        })),
-      }));
-    }
+    // No longer loading local votes for counts, DB is source of truth for results
+    // const storedVotes = localStorage.getItem(`ballotbox_votes_${electionId}`);
+    // if (storedVotes) {
+    //   const votes = JSON.parse(storedVotes) as Record<string, number>;
+    //   setElection(prevElection => ({
+    //     ...prevElection,
+    //     candidates: prevElection.candidates.map(c => ({
+    //       ...c,
+    //       voteCount: votes[c.id] || c.voteCount || 0,
+    //     })),
+    //   }));
+    // }
     setIsLoadingClientState(false);
   }, [electionId, election.startDate, election.endDate]);
 
@@ -83,16 +84,12 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     return user?.role === 'voter' || user?.role === 'candidate';
   }, [user]);
 
-  const handleVote = (candidateId: string) => {
+  const handleVote = async (candidateId: string) => {
     if (votedCandidateId || !clientIsElectionOngoing || !canUserVote) return;
 
+    // Optimistic UI update
     setVotedCandidateId(candidateId);
     localStorage.setItem(`ballotbox_voted_${electionId}`, candidateId);
-
-    const currentVotesString = localStorage.getItem(`ballotbox_votes_${electionId}`);
-    let currentVotes = currentVotesString ? JSON.parse(currentVotesString) : {};
-    currentVotes[candidateId] = (currentVotes[candidateId] || 0) + 1;
-    localStorage.setItem(`ballotbox_votes_${electionId}`, JSON.stringify(currentVotes));
     
     setElection(prev => {
         if (!prev) return prev;
@@ -105,10 +102,65 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     });
 
     toast({
-      title: "Vote Cast Successfully!",
-      description: `You voted for ${election.candidates.find(c => c.id === candidateId)?.name}.`,
+      title: "Vote Cast Locally!",
+      description: `You voted for ${election.candidates.find(c => c.id === candidateId)?.name}. Saving to server...`,
       action: <CheckCircle className="text-green-500" />,
     });
+
+    // Persist vote to DB
+    try {
+      const response = await fetch(`/api/elections/${electionId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to persist vote to DB:', errorData.message);
+        // Attempt to revert optimistic UI update (optional, can be complex)
+        setElection(prev => { // Revert vote count
+            if (!prev) return prev;
+            return {
+                ...prev,
+                candidates: prev.candidates.map(c => 
+                    c.id === candidateId ? { ...c, voteCount: (c.voteCount || 1) - 1 } : c //
+                )
+            }
+        });
+        setVotedCandidateId(null); // Allow re-voting if server save failed
+        localStorage.removeItem(`ballotbox_voted_${electionId}`);
+
+        toast({
+          title: "Vote Save Failed",
+          description: `Could not save your vote to the server: ${errorData.message || 'Unknown error'}. Please try again.`,
+          variant: "destructive",
+        });
+      } else {
+         toast({
+            title: "Vote Saved!",
+            description: `Your vote for ${election.candidates.find(c => c.id === candidateId)?.name} has been saved to the server.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error persisting vote to DB:', error);
+       setElection(prev => { // Revert vote count
+            if (!prev) return prev;
+            return {
+                ...prev,
+                candidates: prev.candidates.map(c => 
+                    c.id === candidateId ? { ...c, voteCount: (c.voteCount || 1) - 1 } : c 
+                )
+            }
+        });
+      setVotedCandidateId(null);
+      localStorage.removeItem(`ballotbox_voted_${electionId}`);
+      toast({
+        title: "Vote Sync Error",
+        description: "Could not save your vote to the server due to a network or server error. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const serverFormattedStartDate = election.startDate.split('T')[0];
@@ -130,7 +182,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 <h1 className="text-3xl font-headline font-bold text-primary mb-2">{election.name}</h1>
                 <p className="text-muted-foreground mb-1 flex items-center">
                 <CalendarDays className="mr-2 h-4 w-4" /> 
-                {clientFormattedStartDate || serverFormattedStartDate} - {clientFormattedEndDate || serverFormattedEndDate}
+                {isClientMounted && clientFormattedStartDate ? clientFormattedStartDate : serverFormattedStartDate} - {isClientMounted && clientFormattedEndDate ? clientFormattedEndDate : serverFormattedEndDate}
                 </p>
                 <p className="text-sm text-foreground/80 mb-4">{election.description}</p>
             </div>
@@ -144,7 +196,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </div>
       </section>
 
-      {clientElectionStatusMessage && clientElectionStatusMessage.type !== "ongoing" && (
+      {isClientMounted && clientElectionStatusMessage && clientElectionStatusMessage.type !== "ongoing" && (
         <Alert 
           variant={clientElectionStatusMessage.type === "concluded" ? "default" : "default"} 
           className={clientElectionStatusMessage.type === "concluded" ? "bg-gray-100 border-gray-300 text-gray-700" : "bg-blue-100 border-blue-300 text-blue-700"}
@@ -157,7 +209,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
 
-      {votedCandidateId && clientIsElectionOngoing && (
+      {isClientMounted && votedCandidateId && clientIsElectionOngoing && (
          <Alert variant="default" className="bg-accent/30 border-accent text-accent-foreground">
           <CheckCircle className="h-4 w-4" />
           <AlertTitle>Vote Recorded</AlertTitle>
@@ -167,7 +219,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
       
-      {!canUserVote && clientIsElectionOngoing && !votedCandidateId && (
+      {isClientMounted && !canUserVote && clientIsElectionOngoing && !votedCandidateId && (
          <Alert variant="default" className="bg-yellow-100 border-yellow-300 text-yellow-700">
           <Info className="h-4 w-4" />
           <AlertTitle>Voting Information</AlertTitle>
@@ -189,7 +241,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 hasVoted={!!votedCandidateId}
                 votedForThisCandidate={votedCandidateId === candidate.id}
                 isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing}
-                canVote={!!canUserVote} // Pass the canVote status
+                canVote={!!canUserVote} 
               />
             ))}
           </div>
