@@ -16,7 +16,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { getAuth, signInWithEmailAndPassword, AuthError } from "firebase/auth";
-import { app } from "@/lib/firebase"; 
+import { app } from "@/lib/firebase";
+import { Separator } from "@/components/ui/separator"; {/* Added missing import */}
 
 const voterLoginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
