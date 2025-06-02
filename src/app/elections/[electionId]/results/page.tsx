@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const POLLING_INTERVAL = 10000; // 10 seconds
+
 export default function ElectionResultsPage() {
   const params = useParams();
   const router = useRouter();
@@ -25,11 +27,14 @@ export default function ElectionResultsPage() {
       return;
     }
 
+    let isActive = true; // Flag to prevent state updates if component unmounts
+
     const fetchElectionResults = async () => {
-      setIsLoading(true);
+      if (!isActive) return;
+      // Don't set isLoading to true on subsequent polls, only on initial load or error retry
+      // setIsLoading(true); // This would cause a flicker on polls
       setError(null);
       try {
-        // API route /api/elections/[electionId] is now force-dynamic
         const response = await fetch(`/api/elections/${electionId}`);
         if (!response.ok) {
           const errorData = await response.json();
@@ -43,29 +48,42 @@ export default function ElectionResultsPage() {
           results: election.candidates.map(candidate => ({
             candidateId: candidate.id,
             candidateName: candidate.name,
-            // candidate.voteCount should now always be a number from the API
             voteCount: candidate.voteCount, 
           })).sort((a,b) => b.voteCount - a.voteCount),
         };
-        setResultsData(electionResults);
+        
+        if (isActive) {
+          setResultsData(electionResults);
+        }
 
       } catch (err: any) {
         console.error("Error fetching election results:", err);
-        setError(err.message || "Could not load election results.");
-        setResultsData(null);
+        if (isActive) {
+          setError(err.message || "Could not load election results.");
+          // Keep existing data if polling fails, unless it's the initial load
+          // setResultsData(null); 
+        }
       } finally {
-        setIsLoading(false);
+        if (isActive && isLoading) { // Only set isLoading to false on initial load completion
+             setIsLoading(false);
+        }
       }
     };
 
-    fetchElectionResults();
-  }, [electionId]);
+    fetchElectionResults(); // Initial fetch
+    const intervalId = setInterval(fetchElectionResults, POLLING_INTERVAL);
+
+    return () => {
+      isActive = false;
+      clearInterval(intervalId);
+    };
+  }, [electionId, isLoading]); // Added isLoading to dependency array to reset polling logic if initial load fails and user retries.
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading results...</div>;
   }
 
-  if (error) {
+  if (error && !resultsData) { // Only show full error screen if no data is available at all
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-semibold text-destructive">Error Loading Results</h1>
@@ -76,11 +94,14 @@ export default function ElectionResultsPage() {
         <Button onClick={() => router.push(`/elections/${electionId}`)} className="mt-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Election
         </Button>
+         <Button onClick={() => { setIsLoading(true); setResultsData(null); setError(null); }} className="mt-4 ml-2"> {/* Basic Retry */}
+          Retry
+        </Button>
       </div>
     );
   }
-
-  if (!resultsData) {
+  
+  if (!resultsData && !isLoading) { // Should be caught by error case if fetch truly failed
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-semibold">Results Not Found</h1>
@@ -92,7 +113,7 @@ export default function ElectionResultsPage() {
     );
   }
   
-  const totalVotes = resultsData.results.reduce((sum, r) => sum + r.voteCount, 0);
+  const totalVotes = resultsData?.results.reduce((sum, r) => sum + r.voteCount, 0) ?? 0;
 
   return (
     <div className="space-y-8">
@@ -100,9 +121,16 @@ export default function ElectionResultsPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Election Details
       </Button>
 
+      {error && resultsData && ( // Show error as an alert if we have some data but polling failed
+         <Alert variant="destructive" className="my-4">
+          <AlertTitle>Polling Error</AlertTitle>
+          <AlertDescription>Could not update results: {error}. Displaying last known data.</AlertDescription>
+        </Alert>
+      )}
+
       <ResultsChart data={resultsData} />
       
-      {totalVotes === 0 && (
+      {resultsData && totalVotes === 0 && (
         <Alert className="mt-4">
           <AlertTitle>No Votes Yet</AlertTitle>
           <AlertDescription>
@@ -113,3 +141,4 @@ export default function ElectionResultsPage() {
     </div>
   );
 }
+
