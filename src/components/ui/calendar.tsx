@@ -21,9 +21,8 @@ function Calendar({
   toYear,
   ...props
 }: CalendarProps) {
-  const currentYear = new Date().getFullYear();
-  const defaultFromYear = fromYear || currentYear - 100;
-  const defaultToYear = toYear || currentYear;
+  // fromYear and toYear will be passed directly to DayPicker
+  // DayPicker will use them to constrain navigation if captionLayout="buttons"
 
   return (
     <DayPicker
@@ -33,8 +32,8 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium hidden", // This hides the main "Month Year" label
-        caption_dropdowns: "flex gap-1", // This styles the container for the dropdowns
+        caption_label: "text-sm font-medium", // Made visible for "Month Year" display
+        caption_dropdowns: "flex gap-1", // Kept for potential future use, though not primary with "buttons" layout
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -65,16 +64,16 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
+        IconLeft: ({ className: iconClassName, ...iconProps }) => (
+          <ChevronLeft className={cn("h-4 w-4", iconClassName)} {...iconProps} />
         ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
+        IconRight: ({ className: iconClassName, ...iconProps }) => (
+          <ChevronRight className={cn("h-4 w-4", iconClassName)} {...iconProps} />
         ),
       }}
-      captionLayout="dropdown-buttons"
-      fromYear={props.mode === "single" ? defaultFromYear : undefined}
-      toYear={props.mode === "single" ? defaultToYear : undefined}
+      captionLayout="buttons" // Changed from "dropdown-buttons"
+      fromYear={fromYear} // Pass fromYear to limit navigation
+      toYear={toYear}     // Pass toYear to limit navigation
       {...props}
     />
   )
