@@ -45,7 +45,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
-            party: candidate.party, 
+            party: candidate.party,
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
             electionId: electionIdString,
@@ -145,13 +145,14 @@ export default async function HomePage() {
                 <CardHeader>
                   {announcement.imageUrl && (
                     <div className="relative w-full h-48 mb-4 rounded-t-md overflow-hidden">
-                      <Image 
-                        src={announcement.imageUrl} 
-                        alt={announcement.title} 
+                      <Image
+                        src={announcement.imageUrl}
+                        alt={announcement.title}
                         fill={true}
                         style={{ objectFit: 'cover' }}
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
                         data-ai-hint="announcement event"
+                        priority={false}
                       />
                     </div>
                   )}
