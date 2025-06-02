@@ -1,11 +1,19 @@
 
 {
   "hosting": {
-    "source": ".",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "apphosting": {
+          "backendId": "YOUR_APP_HOSTING_BACKEND_ID"
+        }
+      }
     ]
   }
 }
