@@ -68,7 +68,7 @@ function Calendar({
           <ChevronRight className={cn("h-4 w-4", iconClassName)} {...iconProps} />
         ),
       }}
-      captionLayout="dropdown-buttons" // Use dropdowns for month/year and buttons for nav
+      captionLayout="dropdown" // Changed from "dropdown-buttons"
       fromYear={fromYear} 
       toYear={toYear}     
       {...props}
