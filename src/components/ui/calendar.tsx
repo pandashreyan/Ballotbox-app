@@ -21,9 +21,6 @@ function Calendar({
   toYear,
   ...props
 }: CalendarProps) {
-  // fromYear and toYear will be passed directly to DayPicker
-  // DayPicker will use them to constrain navigation if captionLayout="buttons"
-
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -32,8 +29,8 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium", // Made visible for "Month Year" display
-        caption_dropdowns: "flex gap-1", // Kept for potential future use, though not primary with "buttons" layout
+        caption_label: "text-sm font-medium hidden", // Keep hidden when dropdowns are used
+        caption_dropdowns: "flex gap-1", 
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -71,9 +68,9 @@ function Calendar({
           <ChevronRight className={cn("h-4 w-4", iconClassName)} {...iconProps} />
         ),
       }}
-      captionLayout="buttons" // Changed from "dropdown-buttons"
-      fromYear={fromYear} // Pass fromYear to limit navigation
-      toYear={toYear}     // Pass toYear to limit navigation
+      captionLayout="dropdown-buttons" // Use dropdowns for month/year and buttons for nav
+      fromYear={fromYear} 
+      toYear={toYear}     
       {...props}
     />
   )
@@ -81,3 +78,4 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
+
