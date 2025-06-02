@@ -3,22 +3,28 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, type AuthUser } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth"; // Removed unused AuthUser type import
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ShieldAlert, UserCheck, UserX, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, ShieldAlert, UserCheck, UserX, CheckCircle, XCircle, AlertCircle as AlertCircleIconLucide } from "lucide-react"; // Renamed to avoid conflict
 import { collection, onSnapshot, doc, getFirestore, query, where, orderBy } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 
-interface VoterData extends AuthUser {
-  registeredAt?: string; 
+// Refined VoterData interface to directly reflect Firestore 'voters' document structure + id
+interface VoterData {
+  id: string; // Document ID from Firestore (which is the user's UID)
+  uid?: string; // If you also store uid as a field in the document
+  email?: string;
+  isEligible?: boolean;
+  isVerified?: boolean;
+  registeredAt?: string; // Stored as ISO string
 }
 
 type VoterFilter = "all" | "eligible" | "ineligible" | "verified" | "unverified";
@@ -65,7 +71,16 @@ export default function AdminVotersPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const votersList: VoterData[] = [];
       querySnapshot.forEach((doc) => {
-        votersList.push({ id: doc.id, ...doc.data() } as VoterData);
+        // Ensure the data conforms to VoterData, especially for optional fields
+        const data = doc.data();
+        votersList.push({
+          id: doc.id,
+          uid: data.uid,
+          email: data.email,
+          isEligible: data.isEligible,
+          isVerified: data.isVerified,
+          registeredAt: data.registeredAt,
+        } as VoterData);
       });
       setVoters(votersList);
       setIsLoadingVoters(false);
@@ -179,7 +194,7 @@ export default function AdminVotersPage() {
 
           {voters.length === 0 && !isLoadingVoters ? (
             <Alert>
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircleIconLucide className="h-4 w-4" />
               <AlertTitle>No Voters Found</AlertTitle>
               <AlertDescription>There are no voters matching the current filter, or no voters registered yet.</AlertDescription>
             </Alert>
