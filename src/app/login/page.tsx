@@ -19,6 +19,7 @@ import { getAuth, signInWithEmailAndPassword, AuthError } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
+import { differenceInYears } from 'date-fns';
 
 const voterLoginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -32,6 +33,13 @@ const voterDetailsSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   nationalId: z.string().min(5, { message: "National ID must be at least 5 characters." }),
   aadhaarId: z.string().min(12, { message: "Aadhaar ID must be 12 digits." }).max(12, { message: "Aadhaar ID must be 12 digits."}).regex(/^\d{12}$/, { message: "Aadhaar ID must be 12 digits."}),
+}).refine(data => {
+  if (!data.dob) return true; // Already handled by required_error or if field is optional initially
+  const age = differenceInYears(new Date(), data.dob);
+  return age >= 18;
+}, {
+  message: "Voter must be at least 18 years old.",
+  path: ["dob"], 
 });
 type VoterDetailsFormValues = z.infer<typeof voterDetailsSchema>;
 
@@ -76,7 +84,8 @@ export default function LoginPage() {
       return;
     }
     if (selectedRole === 'voter') {
-      setCurrentStep('voterLogin'); // voterLogin step for email/password
+      // setCurrentStep('voterLogin'); // Old: voterLogin step for email/password
+      setCurrentStep('enterVoterDetails'); // New: voter details step
     } else { // Admin or Candidate
       handleMockLogin();
     }
@@ -117,9 +126,9 @@ export default function LoginPage() {
 
 
   const handleMockLogin = async () => {
-     if (!selectedRole || selectedRole === 'voter') return; // Should not happen for voters here
+     if (!selectedRole || selectedRole === 'voter') return; 
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300)); 
     if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
       (window as any).setMockUserRole(selectedRole);
       toast({
@@ -137,22 +146,28 @@ export default function LoginPage() {
     setIsLoading(false)
   };
 
-  // This function seems to be for a previous flow (entering details *before* Firebase auth)
-  // For now, actual voter details are not collected on login if using Firebase Auth.
-  // If we want to collect details POST-Firebase-login (e.g., for profile completion),
-  // that would be a different flow, likely after redirecting to a profile page.
-  // For simplicity, this function is not directly used by the voterLogin step currently.
   const onSubmitVoterDetails = async (data: VoterDetailsFormValues) => {
     setIsLoading(true);
     console.log("Mock Voter Details Submitted:", data);
-    // Simulate saving details if needed
+    
+    // The actual email/password for Firebase is now handled by a separate voterLogin form.
+    // This onSubmitVoterDetails is for the MOCK "enter details" flow if 'voter' is selected
+    // without Firebase. If Firebase is chosen for voter, this part is skipped.
+    // For now, the `currentStep` logic directs 'voter' selection to `enterVoterDetails`.
+    // We can refine this if we want a separate Firebase login and a separate mock details entry.
+
+    // For now, let's assume this step still just sets the role and navigates.
+    // Actual data would be used if we were storing it somewhere beyond mock auth.
+    
     await new Promise(resolve => setTimeout(resolve, 500));
 
     if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
-      (window as any).setMockUserRole('voter');
+      (window as any).setMockUserRole('voter'); // Sets the role
+      // Potentially, you could pass `data` to `setMockUserRole` if it's enhanced to store these details in the mock user.
+      // For now, `useAuth` sets default values for these fields when role is 'voter'.
       toast({
-        title: "Mock Voter Details Saved!",
-        description: "Logged in as Voter with provided details (mock).",
+        title: "Mock Voter Details Submitted!",
+        description: "Proceeding as Voter (mock).",
       });
       router.push('/');
     } else {
@@ -183,14 +198,14 @@ export default function LoginPage() {
   const cardTitle = currentStep === 'selectRole' 
     ? "Login to BallotBox" 
     : currentStep === 'voterLogin' 
-    ? "Voter Login"
-    : "Voter Details";
+    ? "Voter Login (Firebase)" // Title updated to reflect Firebase
+    : "Voter Details (Mock)"; // Title for details entry
 
   const cardDescription = currentStep === 'selectRole' 
-    ? "Select your role to continue." 
+    ? "Select your role. Admins/Candidates use mock login. Voters can use Firebase or mock details entry." 
     : currentStep === 'voterLogin'
-    ? "Enter your email and password to vote."
-    : "Please provide your details to complete mock registration.";
+    ? "Enter your email and password to vote using your Firebase account."
+    : "Provide your details for mock voter access.";
 
 
   return (
@@ -222,12 +237,12 @@ export default function LoginPage() {
                       <SelectContent>
                         <SelectItem value="admin">
                           <div className="flex items-center">
-                            <UserCog className="mr-2 h-4 w-4" /> Admin
+                            <UserCog className="mr-2 h-4 w-4" /> Admin (Mock)
                           </div>
                         </SelectItem>
                         <SelectItem value="candidate">
                           <div className="flex items-center">
-                            <UserCheck className="mr-2 h-4 w-4" /> Candidate
+                            <UserCheck className="mr-2 h-4 w-4" /> Candidate (Mock)
                           </div>
                         </SelectItem>
                         <SelectItem value="voter">
@@ -240,6 +255,10 @@ export default function LoginPage() {
                   </div>
                   <Button onClick={handleRoleSelected} disabled={isLoading || !selectedRole} className="w-full" size="lg">
                     {isLoading ? <Loader2 className="animate-spin" /> : "Proceed"}
+                  </Button>
+                  <Separator/>
+                  <Button onClick={() => setCurrentStep('voterLogin')} variant="outline" className="w-full">
+                     Login with Email/Password (Voter)
                   </Button>
                 </div>
               )}
@@ -317,7 +336,7 @@ export default function LoginPage() {
 
                   <div className="flex flex-col space-y-2 pt-2">
                     <Button type="submit" disabled={isLoading} size="lg">
-                      {isLoading ? <Loader2 className="animate-spin" /> : "Complete Registration & Login"}
+                      {isLoading ? <Loader2 className="animate-spin" /> : "Complete Mock Registration & Login"}
                     </Button>
                     <Button variant="outline" onClick={() => setCurrentStep('selectRole')} disabled={isLoading}>
                       Back to Role Selection
@@ -341,7 +360,7 @@ export default function LoginPage() {
                 </>
               )}
                <p className="text-muted-foreground text-center">
-                Select your role. Voters use email/password. Other roles are for mock demonstration.
+                Select role or use email/password for Firebase voter login.
               </p>
               <Button variant="link" asChild className="mt-2">
                 <Link href="/">Back to Home</Link>
