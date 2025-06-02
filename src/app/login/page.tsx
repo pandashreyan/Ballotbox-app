@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog, ArrowLeft, Loader2, UserPlus, Edit3 } from "lucide-react" 
+import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog, ArrowLeft, Loader2, UserPlus, Edit3, Edit } from "lucide-react" 
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { UserRole } from "@/hooks/useAuth"
@@ -64,7 +65,7 @@ export default function LoginPage() {
     },
   });
 
-  const candidateLoginForm = useForm<FirebaseLoginFormValues>({ // New form for candidate login
+  const candidateLoginForm = useForm<FirebaseLoginFormValues>({ 
     resolver: zodResolver(firebaseLoginSchema),
     defaultValues: {
       email: "",
@@ -94,7 +95,9 @@ export default function LoginPage() {
     }
     if (selectedRole === 'voter') {
       setCurrentStep('enterVoterDetails'); 
-    } else { // Admin or Candidate (direct mock login)
+    } else if (selectedRole === 'admin') { // Admin mock login
+      handleMockLogin(selectedRole);
+    } else if (selectedRole === 'candidate') { // Candidate mock login
       handleMockLogin(selectedRole);
     }
   };
@@ -201,7 +204,7 @@ export default function LoginPage() {
     : "Voter Details (Mock)";
 
   const cardDescription = currentStep === 'selectRole' 
-    ? "Select role. Admins/Candidates can use mock login or Firebase. Voters can use Firebase or mock details entry." 
+    ? "Select your role to continue. Admins use mock login. Candidates and Voters can use Firebase Auth or mock methods."
     : currentStep === 'voterLogin'
     ? "Enter your email and password to vote using your Firebase account."
     : currentStep === 'candidateLogin'
@@ -225,7 +228,7 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               {currentStep === 'selectRole' && (
-                <div className="space-y-4"> {/* Adjusted spacing */}
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="role-select">User Role</Label>
                     <Select 
@@ -254,18 +257,22 @@ export default function LoginPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleRoleSelectedProceed} disabled={isLoading || !selectedRole} className="w-full" size="lg">
-                    {isLoading ? <Loader2 className="animate-spin" /> : (selectedRole === 'admin' || selectedRole === 'candidate' ? "Proceed (Mock Login)" : "Proceed (Enter Details)")}
-                  </Button>
-                  <Separator/>
-                  <div className="space-y-2"> {/* Group Firebase login buttons */}
-                    <Button onClick={() => setCurrentStep('voterLogin')} variant="outline" className="w-full">
-                       Login with Email/Password (Voter)
+                  {selectedRole && (selectedRole === 'admin') && (
+                     <Button onClick={handleRoleSelectedProceed} disabled={isLoading} className="w-full" size="lg">
+                        {isLoading ? <Loader2 className="animate-spin" /> : "Proceed (Mock Login)"}
                     </Button>
-                    <Button onClick={() => setCurrentStep('candidateLogin')} variant="outline" className="w-full">
-                       Login with Email/Password (Candidate)
-                    </Button>
-                  </div>
+                  )}
+                  {selectedRole && (selectedRole === 'voter' || selectedRole === 'candidate') && (
+                    <>
+                       <Button onClick={handleRoleSelectedProceed} disabled={isLoading} className="w-full" size="lg">
+                        {isLoading ? <Loader2 className="animate-spin" /> : (selectedRole === 'voter' ? "Proceed (Enter Details - Mock)" : "Proceed (Mock Login)")}
+                      </Button>
+                      <Separator/>
+                      <Button onClick={() => setCurrentStep(selectedRole === 'voter' ? 'voterLogin' : 'candidateLogin')} variant="outline" className="w-full">
+                         Login with Email/Password ({selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)})
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -369,16 +376,23 @@ export default function LoginPage() {
                   <p className="text-muted-foreground">
                     Don&apos;t have an account?
                   </p>
-                  <Button variant="link" asChild className="mt-1">
-                    <Link href="/register">
-                      <UserPlus className="mr-2 h-4 w-4" /> Register here
-                    </Link>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                    <Button variant="link" asChild className="p-0 h-auto">
+                      <Link href="/register">
+                        <UserPlus className="mr-1 h-4 w-4" /> Voter Registration
+                      </Link>
+                    </Button>
+                    <Button variant="link" asChild className="p-0 h-auto">
+                      <Link href="/register-candidate">
+                        <Edit className="mr-1 h-4 w-4" /> Candidate Registration
+                      </Link>
+                    </Button>
+                  </div>
                   <Separator className="my-3"/>
                 </>
               )}
                <p className="text-muted-foreground text-center">
-                Select role or use email/password for Firebase login.
+                Select role to begin or use email/password for Firebase login.
               </p>
               <Button variant="link" asChild className="mt-2">
                 <Link href="/">Back to Home</Link>
