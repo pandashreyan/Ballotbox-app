@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
-import { getAuth, createUserWithEmailAndPassword, AuthError } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth"; // Removed AuthError import
+import { FirebaseError } from 'firebase/app'; // Import FirebaseError for type checking
 import { doc, setDoc } from "firebase/firestore"; // Added for Firestore
 import { app, db } from "@/lib/firebase"; // Ensure db is exported and app is correct
 
@@ -73,7 +74,7 @@ export default function RegisterPage() {
       // setTimeout(() => router.push('/login'), 2000); 
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again.";
-      if (error instanceof AuthError) {
+      if (error instanceof FirebaseError) {
         if (error.code === 'auth/email-already-in-use') {
           errorMessage = "This email address is already in use.";
         } else if (error.code === 'auth/weak-password') {
@@ -184,3 +185,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    

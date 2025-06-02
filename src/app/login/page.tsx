@@ -16,7 +16,8 @@ import type { UserRole } from "@/hooks/useAuth"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { getAuth, signInWithEmailAndPassword, AuthError } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth"; // Removed AuthError import
+import { FirebaseError } from 'firebase/app'; // Import FirebaseError for type checking
 import { app } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -117,7 +118,7 @@ export default function LoginPage() {
          throw new Error("Mock login function unavailable after Firebase auth.");
       }
     } catch (error: any) {
-      const authError = error as AuthError;
+      const authError = error as FirebaseError; // Use FirebaseError for typing
       console.error("Firebase Login error:", authError);
       let errorMessage = "Login failed. Please check your credentials.";
       if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
@@ -462,6 +463,8 @@ export default function LoginPage() {
     </div>
   )
 }
+    
+
     
 
     

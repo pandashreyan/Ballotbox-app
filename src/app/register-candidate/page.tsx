@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, UserPlus, Edit } from "lucide-react";
-import { getAuth, createUserWithEmailAndPassword, AuthError } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { FirebaseError } from 'firebase/app'; // Import FirebaseError for type checking
 import { doc, setDoc } from "firebase/firestore";
 import { app, db } from "@/lib/firebase"; // Ensure db is exported from firebase.ts
 import { differenceInYears } from 'date-fns';
@@ -100,7 +101,7 @@ export default function RegisterCandidatePage() {
       // setTimeout(() => router.push('/login'), 3000); 
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again.";
-      if (error instanceof AuthError) { // Check if it's Firebase AuthError
+      if (error instanceof FirebaseError) { // Check if it's FirebaseError
         if (error.code === 'auth/email-already-in-use') {
           errorMessage = "This email address is already in use by an existing account.";
         } else if (error.code === 'auth/weak-password') {
@@ -110,7 +111,7 @@ export default function RegisterCandidatePage() {
         } else {
           errorMessage = error.message; // Use Firebase's message for other auth errors
         }
-      } else if (error.message) { // For other types of errors (e.g., Firestore)
+      } else if (error.message) { // For other types of errors
         errorMessage = error.message;
       }
       console.error("Candidate Registration error:", error);
