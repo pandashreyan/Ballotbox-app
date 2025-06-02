@@ -9,6 +9,7 @@ import { mockAnnouncements } from '@/lib/mockData'; // Import mock announcements
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // For Announcement card
 import Image from 'next/image'; // For Announcement image
 import { Separator } from '@/components/ui/separator';
+import { FormattedDate } from '@/components/FormattedDate'; // Import the new component
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -147,15 +148,16 @@ export default async function HomePage() {
                       <Image 
                         src={announcement.imageUrl} 
                         alt={announcement.title} 
-                        layout="fill" 
-                        objectFit="cover"
+                        fill={true}
+                        style={{ objectFit: 'cover' }}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
                         data-ai-hint="announcement event"
                       />
                     </div>
                   )}
                   <CardTitle className="text-xl font-headline text-primary">{announcement.title}</CardTitle>
                   <CardDescription>
-                    Posted on: {new Date(announcement.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    Posted on: <FormattedDate dateString={announcement.date} />
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
