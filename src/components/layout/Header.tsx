@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users, Loader2, LogIn } from 'lucide-react'; // Added LogIn
+import { VoteIcon, UserCircle, LogOut, UserCog, UserCheck, Users, Loader2, LogIn, Users2, Edit } from 'lucide-react'; // Added Users2, Edit
 import { useAuth, UserRole } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,14 +13,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from 'next/navigation'; // Import useRouter
+
 
 export function Header() {
   const { user, isLoadingAuth } = useAuth();
+  const router = useRouter(); // Initialize useRouter
 
   const handleRoleChange = (newRole: UserRole | 'logout') => {
     if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
       if (newRole === 'logout') {
         (window as any).setMockUserRole(null);
+        router.push('/'); // Navigate to homepage on logout
       } else {
         (window as any).setMockUserRole(newRole);
       }
@@ -28,7 +32,6 @@ export function Header() {
   };
 
   const getRoleIcon = (role: UserRole) => {
-    // Ensure role is not null before switching, or handle null explicitly if needed
     if (role === null) return <UserCircle className="mr-2 h-4 w-4" />;
     switch (role) {
       case 'admin':
@@ -64,6 +67,20 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
+                 {user.role === 'admin' && (
+                  <>
+                    <DropdownMenuLabel>Admin Panel</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => router.push('/admin/candidates')}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      <span>Candidate Approval</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => router.push('/admin/voters')}>
+                      <Users2 className="mr-2 h-4 w-4" />
+                      <span>Voter Management</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuLabel>Switch Mock Role</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleRoleChange('admin')}>
@@ -86,7 +103,6 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            // If not loading and no user, show Login button
             <Button asChild variant="ghost" className="flex items-center text-sm hover:bg-primary/80 focus-visible:ring-offset-primary focus-visible:ring-primary-foreground">
               <Link href="/login">
                 <LogIn className="mr-2 h-4 w-4" />

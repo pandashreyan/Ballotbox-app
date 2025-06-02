@@ -1,47 +1,42 @@
 
-// For now, a mock. In a real app, this would use a real auth provider.
 "use client"; 
 
 import { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { doc, getDoc, getFirestore } from "firebase/firestore"; // Added getDoc, getFirestore
+import { app, db } from '@/lib/firebase'; // db should be exported from firebase
 
 export type UserRole = 'voter' | 'candidate' | 'admin' | null;
 
 export interface AuthUser {
   id: string;
-  name: string; // General display name or username
+  name: string; 
   role: UserRole;
-  // Optional detailed fields, primarily for 'voter' role in mock
-  fullName?: string;
-  dob?: string;       // Expected format: YYYY-MM-DD
   email?: string;
-  nationalId?: string;
-  isEligible?: boolean;
+  // Voter specific flags from Firestore
+  isEligible?: boolean; 
   isVerified?: boolean;
+  // Candidate specific flags (can be expanded from Firestore if candidate details stored there)
+  // isCandidateApproved?: boolean; 
 }
 
 const MOCK_USER_ROLE_STORAGE_KEY = 'ballotbox_mock_user_role';
-const auth = getAuth(app);
+const firebaseAuth = getAuth(app); // Renamed to avoid conflict
 
 // Setup the global function once.
 if (typeof window !== 'undefined' && !(window as any)._setMockUserRoleInitialized) {
   (window as any).setMockUserRole = async (newRole: UserRole | null) => {
     if (newRole === null || ['admin', 'candidate', 'voter'].includes(newRole!)) {
-      // If switching to a non-voter mock role or logging out, sign out any Firebase user.
       if (newRole === 'admin' || newRole === 'candidate' || newRole === null) {
-        if (auth.currentUser) {
+        if (firebaseAuth.currentUser) {
           try {
-            await firebaseSignOut(auth);
-            // Firebase sign-out will trigger onAuthStateChanged, which will then update the user state.
+            await firebaseSignOut(firebaseAuth);
           } catch (error) {
             console.error("Error signing out Firebase user:", error);
           }
         }
       }
-      // Set the mock role in localStorage. This will be used if no Firebase user is active.
       localStorage.setItem(MOCK_USER_ROLE_STORAGE_KEY, newRole || '');
-      // Dispatch event for same-page updates.
       window.dispatchEvent(new Event('mockAuthRoleChanged'));
     } else {
       console.error("Invalid role. Use 'admin', 'candidate', 'voter', or null.");
@@ -58,26 +53,26 @@ export function useAuth() {
   const updateUserFromMockRole = (mockRole: UserRole | null) => {
     if (mockRole === 'admin') {
       setUser({
-        id: 'mock-user-id-admin',
+        id: 'mock-admin-id',
         name: 'Mock Admin',
         role: 'admin',
         email: 'admin@example.com',
       });
     } else if (mockRole === 'candidate') {
       setUser({
-        id: 'mock-user-id-candidate',
+        id: 'mock-candidate-id',
         name: 'Mock Candidate',
         role: 'candidate',
         email: 'candidate@example.com',
+        // isCandidateApproved: true, // Example if managing this locally
       });
     } else if (mockRole === 'voter') {
-      // This is for a purely mock voter, not authenticated via Firebase
       setUser({
-        id: 'mock-user-id-voter-fallback', // Use a distinct ID for purely mock voters
+        id: 'mock-voter-id-fallback', 
         name: 'Mock Voter (No Firebase)',
         role: 'voter',
         email: 'mockvoter@example.com', 
-        isEligible: true, 
+        isEligible: true, // For pure mock voter, assume eligible & verified
         isVerified: true, 
       });
     } else {
@@ -87,27 +82,49 @@ export function useAuth() {
 
   useEffect(() => {
     setIsLoadingAuth(true);
-    const unsubscribeAuthState = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribeAuthState = onAuthStateChanged(firebaseAuth, async (firebaseUser: FirebaseUser | null) => {
       const mockRoleFromStorage = localStorage.getItem(MOCK_USER_ROLE_STORAGE_KEY) as UserRole;
 
       if (firebaseUser) {
-        // Firebase user is logged in. They are treated as a 'voter'.
-        // The mock role is ignored if it's 'voter' or null.
-        // If mock role was 'admin' or 'candidate', setMockUserRole should have signed out Firebase.
-         if (mockRoleFromStorage === 'admin' || mockRoleFromStorage === 'candidate') {
-            // This state implies that setMockUserRole to admin/candidate was called
-            // but onAuthStateChanged might be firing *after* that localStorage update
-            // but *before* its own Firebase signout completed and re-triggered onAuthStateChanged.
-            // So, if mock is admin/candidate, respect that and assume Firebase user is about to be null.
+        if (mockRoleFromStorage === 'admin' || mockRoleFromStorage === 'candidate') {
             updateUserFromMockRole(mockRoleFromStorage);
         } else {
-             setUser({
+            // Firebase user is logged in, attempt to fetch their voter/candidate specific data
+            let userRole: UserRole = 'voter'; // Default to voter if firebase user
+            let isEligible = false;
+            let isVerified = false;
+            // let isCandidateApproved = false;
+
+            // Check if user is in 'voters' collection
+            const voterDocRef = doc(db, "voters", firebaseUser.uid);
+            const voterDocSnap = await getDoc(voterDocRef);
+            if (voterDocSnap.exists()) {
+                const voterData = voterDocSnap.data();
+                isEligible = voterData.isEligible === true;
+                isVerified = voterData.isVerified === true;
+                userRole = 'voter'; 
+            } else {
+                // Check if user is in 'candidates' collection (if they logged in via candidate flow)
+                const candidateDocRef = doc(db, "candidates", firebaseUser.uid);
+                const candidateDocSnap = await getDoc(candidateDocRef);
+                if (candidateDocSnap.exists()) {
+                    // const candidateData = candidateDocSnap.data();
+                    // isCandidateApproved = candidateData.isApproved === true; 
+                    userRole = 'candidate';
+                    // For candidates, eligibility/verification might be tied to their approval
+                    // isEligible = isCandidateApproved; 
+                    // isVerified = isCandidateApproved;
+                }
+            }
+            
+            setUser({
                 id: firebaseUser.uid,
-                name: firebaseUser.email || firebaseUser.displayName || 'Voter',
-                role: 'voter',
+                name: firebaseUser.email || firebaseUser.displayName || (userRole === 'voter' ? 'Voter' : 'Candidate'),
+                role: userRole,
                 email: firebaseUser.email || undefined,
-                isEligible: true, 
-                isVerified: true, 
+                isEligible: isEligible,
+                isVerified: isVerified,
+                // isCandidateApproved: isCandidateApproved,
             });
         }
       } else {
@@ -117,38 +134,53 @@ export function useAuth() {
       setIsLoadingAuth(false);
     });
 
-    const handleMockAuthRoleChanged = () => { // For changes triggered by (window as any).setMockUserRole
-        setIsLoadingAuth(true); // Briefly set loading during transition
-        const currentFirebaseUser = auth.currentUser; // Re-check Firebase state
+    const handleMockAuthRoleChanged = async () => { 
+        setIsLoadingAuth(true); 
+        const currentFirebaseUser = firebaseAuth.currentUser; 
         const mockRoleFromStorage = localStorage.getItem(MOCK_USER_ROLE_STORAGE_KEY) as UserRole;
 
         if (currentFirebaseUser) {
-            // If a Firebase user is still somehow active (e.g. signout didn't complete before this event)
-            // AND the desired mock role is admin/candidate, this means we *want* the mock role.
-            // (setMockUserRole already attempted Firebase signout for admin/candidate).
              if (mockRoleFromStorage === 'admin' || mockRoleFromStorage === 'candidate') {
                 updateUserFromMockRole(mockRoleFromStorage);
-            } else { // Otherwise, Firebase user implies 'voter'
+            } else { 
+                // Existing Firebase user implies 'voter' or 'candidate' based on Firestore
+                let userRole: UserRole = 'voter';
+                let isEligible = false;
+                let isVerified = false;
+
+                const voterDocRef = doc(db, "voters", currentFirebaseUser.uid);
+                const voterDocSnap = await getDoc(voterDocRef);
+                 if (voterDocSnap.exists()) {
+                    const voterData = voterDocSnap.data();
+                    isEligible = voterData.isEligible === true;
+                    isVerified = voterData.isVerified === true;
+                    userRole = 'voter';
+                } else {
+                    const candidateDocRef = doc(db, "candidates", currentFirebaseUser.uid);
+                    const candidateDocSnap = await getDoc(candidateDocRef);
+                    if (candidateDocSnap.exists()) {
+                        userRole = 'candidate';
+                    }
+                }
                  setUser({
                     id: currentFirebaseUser.uid,
-                    name: currentFirebaseUser.email || currentFirebaseUser.displayName || 'Voter',
-                    role: 'voter',
+                    name: currentFirebaseUser.email || currentFirebaseUser.displayName || (userRole === 'voter' ? 'Voter' : 'Candidate'),
+                    role: userRole,
                     email: currentFirebaseUser.email || undefined,
-                    isEligible: true,
-                    isVerified: true,
+                    isEligible,
+                    isVerified,
                 });
             }
         } else {
-            // No Firebase user, purely mock.
             updateUserFromMockRole(mockRoleFromStorage);
         }
         setIsLoadingAuth(false);
     };
 
     window.addEventListener('mockAuthRoleChanged', handleMockAuthRoleChanged);
-    window.addEventListener('storage', (event) => { // For cross-tab changes
+    window.addEventListener('storage', (event) => { 
         if (event.key === MOCK_USER_ROLE_STORAGE_KEY) {
-            handleMockAuthRoleChanged(); // Re-evaluate based on new storage value
+            handleMockAuthRoleChanged(); 
         }
     });
 

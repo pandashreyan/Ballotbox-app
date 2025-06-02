@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, UserPlus } from "lucide-react";
 import { getAuth, createUserWithEmailAndPassword, AuthError } from "firebase/auth";
-import { app } from "@/lib/firebase"; // Ensure this path is correct
+import { doc, setDoc } from "firebase/firestore"; // Added for Firestore
+import { app, db } from "@/lib/firebase"; // Ensure db is exported and app is correct
 
 const registrationSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -23,7 +24,7 @@ const registrationSchema = z.object({
   confirmPassword: z.string().min(6, { message: "Please confirm your password." }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match.",
-  path: ["confirmPassword"], // Path to show the error on
+  path: ["confirmPassword"], 
 });
 
 type RegistrationFormValues = z.infer<typeof registrationSchema>;
@@ -35,7 +36,7 @@ export default function RegisterPage() {
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
-  const auth = getAuth(app);
+  const firebaseAuth = getAuth(app); // Renamed to avoid conflict if auth is imported directly
 
   const form = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema),
@@ -51,26 +52,41 @@ export default function RegisterPage() {
     setServerError(null);
     setSuccessMessage(null);
     try {
-      await createUserWithEmailAndPassword(auth, data.email, data.password);
-      setSuccessMessage("Registration successful! You can now log in.");
+      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
+      const user = userCredential.user;
+
+      // Create a document in Firestore 'voters' collection
+      await setDoc(doc(db, "voters", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        isEligible: false, // Default to false, admin or other process to set true
+        isVerified: false, // Default to false, admin to verify
+        registeredAt: new Date().toISOString(),
+      });
+
+      setSuccessMessage("Registration successful! Your account is pending verification. You can now log in.");
       toast({
         title: "Registration Successful!",
-        description: "You can now log in with your new account.",
+        description: "Your account has been created and is pending verification. You can log in.",
       });
       form.reset();
-      // Optionally redirect to login after a short delay or keep user on page
       // setTimeout(() => router.push('/login'), 2000); 
     } catch (error: any) {
-      const authError = error as AuthError;
       let errorMessage = "Registration failed. Please try again.";
-      if (authError.code === 'auth/email-already-in-use') {
-        errorMessage = "This email address is already in use.";
-      } else if (authError.code === 'auth/weak-password') {
-        errorMessage = "The password is too weak. Please choose a stronger password.";
-      } else if (authError.code === 'auth/invalid-email') {
-        errorMessage = "The email address is not valid.";
+      if (error instanceof AuthError) {
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = "This email address is already in use.";
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = "The password is too weak. Please choose a stronger password.";
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = "The email address is not valid.";
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
       }
-      console.error("Registration error:", authError);
+      console.error("Registration error:", error);
       setServerError(errorMessage);
       toast({
         title: "Registration Failed",
@@ -90,7 +106,7 @@ export default function RegisterPage() {
             <UserPlus className="mr-2 h-7 w-7" />
             Voter Registration
           </CardTitle>
-          <CardDescription>Create a new account to participate.</CardDescription>
+          <CardDescription>Create a new account to participate. Verification will be required.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

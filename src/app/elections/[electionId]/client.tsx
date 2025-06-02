@@ -8,7 +8,7 @@ import { CandidateCard } from '@/components/CandidateCard';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth'; 
-import { ArrowLeft, BarChart3, CalendarDays, CheckCircle, Info, Loader2 } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarDays, CheckCircle, Info, Loader2, ShieldAlert, ShieldX } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -28,8 +28,6 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
   
   const [election, setElection] = useState<Election>(initialElection);
   const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null);
-  // isLoadingClientState is for client-side specific async operations or checks,
-  // distinct from isLoadingAuth from useAuth hook.
   const [isLoadingClientState, setIsLoadingClientState] = useState(true); 
 
   const [clientFormattedStartDate, setClientFormattedStartDate] = useState<string | null>(null);
@@ -62,33 +60,48 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       setClientElectionStatusMessage({ type: "ongoing", message: "This election is currently ongoing."});
     }
 
-    // User-specific vote storage
     if (user && electionId) {
       const VOTE_STORAGE_KEY = `ballotbox_voted_${user.id}_${electionId}`;
       const storedVotedState = localStorage.getItem(VOTE_STORAGE_KEY);
       if (storedVotedState) {
         setVotedCandidateId(storedVotedState);
       } else {
-        setVotedCandidateId(null); // Explicitly set to null if no vote found for this user
+        setVotedCandidateId(null); 
       }
     } else {
-        setVotedCandidateId(null); // No user, so no vote
+        setVotedCandidateId(null); 
     }
     
-    setIsLoadingClientState(false); // Done with client-side setup for this effect
-  }, [electionId, election.startDate, election.endDate, user]); // Added user to dependency array
+    setIsLoadingClientState(false); 
+  }, [electionId, election.startDate, election.endDate, user]); 
 
   const canUserVote = useMemo(() => {
-    // User must have 'voter' or 'candidate' role to be able to vote.
-    return user?.role === 'voter' || user?.role === 'candidate';
+    const baseRoleCheck = user?.role === 'voter' || user?.role === 'candidate';
+    if (user?.role === 'voter') {
+      return baseRoleCheck && user.isEligible === true && user.isVerified === true;
+    }
+    // Candidates are assumed eligible and verified for voting purposes if they are registered as a candidate for an election.
+    // This could be refined if candidates also need an explicit isEligible/isVerified flag in their own Firestore doc.
+    return baseRoleCheck; 
   }, [user]);
+
+  const votingEligibilityMessage = useMemo(() => {
+    if (!user || (user.role !== 'voter' && user.role !== 'candidate')) {
+      return `Your current role (${user?.role || 'guest'}) does not permit voting.`;
+    }
+    if (user.role === 'voter') {
+      if (user.isEligible === false) return "You are not currently eligible to vote. Please contact an administrator if you believe this is an error.";
+      if (user.isVerified === false) return "Your voter account is not yet verified. Please wait for administrator approval or contact support.";
+    }
+    return null; // Eligible and verified, or a candidate
+  }, [user]);
+
 
   const handleVote = async (candidateId: string) => {
     if (votedCandidateId || !clientIsElectionOngoing || !canUserVote || !user || !electionId) return;
 
     const VOTE_STORAGE_KEY = `ballotbox_voted_${user.id}_${electionId}`;
 
-    // Optimistic UI update
     setVotedCandidateId(candidateId);
     localStorage.setItem(VOTE_STORAGE_KEY, candidateId);
     
@@ -108,7 +121,6 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       action: <CheckCircle className="text-green-500" />,
     });
 
-    // Persist vote to DB
     try {
       const response = await fetch(`/api/elections/${electionId}/vote`, {
         method: 'POST',
@@ -119,7 +131,6 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to persist vote to DB:', errorData.message);
-        // Attempt to revert optimistic UI update
         setElection(prev => { 
             if (!prev) return prev;
             return {
@@ -167,7 +178,6 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
   const serverFormattedStartDate = election.startDate.split('T')[0];
   const serverFormattedEndDate = election.endDate.split('T')[0];
 
-  // Combined loading state: consider both auth loading and client-side setup loading
   if (isLoadingAuth || isLoadingClientState || !isClientMounted) {
      return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election details...</div>;
   }
@@ -221,7 +231,17 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
       
-      {!canUserVote && clientIsElectionOngoing && !votedCandidateId && (
+      {clientIsElectionOngoing && !votedCandidateId && votingEligibilityMessage && (
+         <Alert variant="destructive" className="bg-yellow-100 border-yellow-300 text-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300">
+          { user?.isEligible === false || user?.isVerified === false ? <ShieldAlert className="h-4 w-4" /> : <Info className="h-4 w-4" /> }
+          <AlertTitle>Voting Restriction</AlertTitle>
+          <AlertDescription>
+            {votingEligibilityMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+       {!canUserVote && clientIsElectionOngoing && !votedCandidateId && !votingEligibilityMessage && (
          <Alert variant="default" className="bg-yellow-100 border-yellow-300 text-yellow-700">
           <Info className="h-4 w-4" />
           <AlertTitle>Voting Information</AlertTitle>
@@ -230,6 +250,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
           </AlertDescription>
         </Alert>
       )}
+
 
       <section>
         <h2 className="text-2xl font-headline font-semibold mb-6">Candidates</h2>
@@ -242,8 +263,8 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 onVote={handleVote}
                 hasVoted={!!votedCandidateId}
                 votedForThisCandidate={votedCandidateId === candidate.id}
-                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing} // Ensure boolean
-                canVote={!!canUserVote} 
+                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing} 
+                canVote={!!canUserVote && !votingEligibilityMessage} // User can only vote if role allows AND they pass eligibility/verification checks
               />
             ))}
           </div>
