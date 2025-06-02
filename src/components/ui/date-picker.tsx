@@ -19,9 +19,11 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void;
   placeholder?: string;
   disabled?: (date: Date) => boolean;
+  fromYear?: number;
+  toYear?: number;
 }
 
-export function DatePicker({ date, setDate, placeholder = "Pick a date", disabled }: DatePickerProps) {
+export function DatePicker({ date, setDate, placeholder = "Pick a date", disabled, fromYear, toYear }: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -43,6 +45,8 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", disable
           onSelect={setDate}
           initialFocus
           disabled={disabled}
+          fromYear={fromYear}
+          toYear={toYear}
         />
       </PopoverContent>
     </Popover>

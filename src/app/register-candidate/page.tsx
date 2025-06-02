@@ -17,9 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle, UserPlus, Edit } from "lucide-react";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { FirebaseError } from 'firebase/app'; // Import FirebaseError for type checking
+import { FirebaseError } from 'firebase/app'; 
 import { doc, setDoc } from "firebase/firestore";
-import { app, db } from "@/lib/firebase"; // Ensure db is exported from firebase.ts
+import { app, db } from "@/lib/firebase"; 
 import { differenceInYears } from 'date-fns';
 
 const candidateRegistrationSchema = z.object({
@@ -36,7 +36,6 @@ const candidateRegistrationSchema = z.object({
   path: ["confirmPassword"],
 }).refine(data => {
   if (!data.dob) return true;
-  // Example: Candidates must be at least 21 years old. Adjust as needed.
   const age = differenceInYears(new Date(), data.dob);
   return age >= 21; 
 }, {
@@ -54,6 +53,7 @@ export default function RegisterCandidatePage() {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
   const firebaseAuth = getAuth(app);
+  const currentYear = new Date().getFullYear();
 
   const form = useForm<CandidateRegistrationFormValues>({
     resolver: zodResolver(candidateRegistrationSchema),
@@ -81,14 +81,13 @@ export default function RegisterCandidatePage() {
         uid: user.uid,
         email: data.email,
         fullName: data.fullName,
-        dob: data.dob.toISOString().split('T')[0], // Store DOB as YYYY-MM-DD
+        dob: data.dob.toISOString().split('T')[0], 
         nationalId: data.nationalId,
         party: data.party,
         manifesto: data.manifesto,
-        imageUrl: '', // Initialize with empty or placeholder
-        isApproved: false, // Default to not approved
-        isVerified: false, // Default to not verified
-        // electionRegistrations: [], // To store which elections they are part of
+        imageUrl: '', 
+        isApproved: false, 
+        isVerified: false, 
       });
 
       setSuccessMessage("Candidate registered successfully! Your application will be reviewed.");
@@ -97,11 +96,9 @@ export default function RegisterCandidatePage() {
         description: "Your candidate application has been submitted for review.",
       });
       form.reset();
-      // Optionally redirect to login or a dashboard after a short delay
-      // setTimeout(() => router.push('/login'), 3000); 
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again.";
-      if (error instanceof FirebaseError) { // Check if it's FirebaseError
+      if (error instanceof FirebaseError) { 
         if (error.code === 'auth/email-already-in-use') {
           errorMessage = "This email address is already in use by an existing account.";
         } else if (error.code === 'auth/weak-password') {
@@ -109,9 +106,9 @@ export default function RegisterCandidatePage() {
         } else if (error.code === 'auth/invalid-email') {
           errorMessage = "The email address is not valid.";
         } else {
-          errorMessage = error.message; // Use Firebase's message for other auth errors
+          errorMessage = error.message; 
         }
-      } else if (error.message) { // For other types of errors
+      } else if (error.message) { 
         errorMessage = error.message;
       }
       console.error("Candidate Registration error:", error);
@@ -169,6 +166,8 @@ export default function RegisterCandidatePage() {
                         date={field.value}
                         setDate={field.onChange}
                         placeholder="Select your date of birth"
+                        fromYear={currentYear - 100}
+                        toYear={currentYear}
                     />
                     )}
                 />

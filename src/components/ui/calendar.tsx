@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -7,14 +8,23 @@ import { DayPicker } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  fromYear?: number;
+  toYear?: number;
+}
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  fromYear,
+  toYear,
   ...props
 }: CalendarProps) {
+  const currentYear = new Date().getFullYear();
+  const defaultFromYear = fromYear || currentYear - 100;
+  const defaultToYear = toYear || currentYear;
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -24,6 +34,7 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
+        caption_dropdowns: "flex gap-1",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -61,6 +72,9 @@ function Calendar({
           <ChevronRight className={cn("h-4 w-4", className)} {...props} />
         ),
       }}
+      captionLayout="dropdown-buttons"
+      fromYear={props.mode === "single" ? defaultFromYear : undefined} // Only apply for single date selection like DOB
+      toYear={props.mode === "single" ? defaultToYear : undefined}     // Or make fromYear/toYear props conditional on a new prop e.g. "isDobPicker"
       {...props}
     />
   )

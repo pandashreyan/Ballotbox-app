@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -16,8 +15,8 @@ import type { UserRole } from "@/hooks/useAuth"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth"; // Removed AuthError import
-import { FirebaseError } from 'firebase/app'; // Import FirebaseError for type checking
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { FirebaseError } from 'firebase/app'; 
 import { app } from "@/lib/firebase";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -57,6 +56,7 @@ export default function LoginPage() {
   const [currentStep, setCurrentStep] = React.useState<LoginPageStep>('selectRole');
   
   const auth = getAuth(app);
+  const currentYear = new Date().getFullYear();
 
   const voterLoginForm = useForm<FirebaseLoginFormValues>({
     resolver: zodResolver(firebaseLoginSchema),
@@ -96,9 +96,9 @@ export default function LoginPage() {
     }
     if (selectedRole === 'voter') {
       setCurrentStep('enterVoterDetails'); 
-    } else if (selectedRole === 'admin') { // Admin mock login
+    } else if (selectedRole === 'admin') { 
       handleMockLogin(selectedRole);
-    } else if (selectedRole === 'candidate') { // Candidate mock login
+    } else if (selectedRole === 'candidate') { 
       handleMockLogin(selectedRole);
     }
   };
@@ -118,7 +118,7 @@ export default function LoginPage() {
          throw new Error("Mock login function unavailable after Firebase auth.");
       }
     } catch (error: any) {
-      const authError = error as FirebaseError; // Use FirebaseError for typing
+      const authError = error as FirebaseError; 
       console.error("Firebase Login error:", authError);
       let errorMessage = "Login failed. Please check your credentials.";
       if (authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-credential') {
@@ -268,7 +268,7 @@ export default function LoginPage() {
                        <Button onClick={handleRoleSelectedProceed} disabled={isLoading} className="w-full" size="lg">
                         {isLoading ? <Loader2 className="animate-spin" /> : (selectedRole === 'voter' ? "Proceed (Enter Details - Mock)" : "Proceed (Mock Login)")}
                       </Button>
-                      <Separator/>
+                      <Separator className="my-3"/>
                       <Button onClick={() => setCurrentStep(selectedRole === 'voter' ? 'voterLogin' : 'candidateLogin')} variant="outline" className="w-full">
                          Login with Email/Password ({selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)})
                       </Button>
@@ -339,6 +339,8 @@ export default function LoginPage() {
                             date={field.value}
                             setDate={field.onChange}
                             placeholder="Select your date of birth"
+                            fromYear={currentYear - 100}
+                            toYear={currentYear}
                         />
                         )}
                     />
@@ -463,8 +465,3 @@ export default function LoginPage() {
     </div>
   )
 }
-    
-
-    
-
-    
