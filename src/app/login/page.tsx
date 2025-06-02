@@ -6,22 +6,21 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-// DatePicker is removed as voter details form is removed for Firebase login
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog, ArrowLeft, Loader2 } from "lucide-react"
+import { LogIn, AlertCircle, Newspaper, Info, UserCheck, Users, UserCog, ArrowLeft, Loader2, UserPlus } from "lucide-react" // Added UserPlus
 import Link from "next/link"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { UserRole } from "@/hooks/useAuth"
-import { useForm, Controller } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { getAuth, signInWithEmailAndPassword, AuthError } from "firebase/auth";
-import { app } from "@/lib/firebase"; // Import your initialized Firebase app
+import { app } from "@/lib/firebase"; 
 
 const voterLoginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().min(1, { message: "Password cannot be empty." }), // Min 1 for presence check
 });
 type VoterLoginFormValues = z.infer<typeof voterLoginSchema>;
 
@@ -61,14 +60,14 @@ export default function LoginPage() {
       }
       try {
         await signInWithEmailAndPassword(auth, data.email, data.password);
-        // If Firebase login is successful, then set the mock role for UI consistency
+        
         if (typeof window !== 'undefined' && (window as any).setMockUserRole) {
-          (window as any).setMockUserRole('voter');
+          (window as any).setMockUserRole('voter'); // Set mock role for UI consistency
           toast({
             title: "Login Successful!",
             description: "Welcome back, Voter!",
           });
-          router.push('/');
+          router.push('/'); 
         } else {
            throw new Error("Mock login function unavailable after Firebase auth.");
         }
@@ -143,7 +142,7 @@ export default function LoginPage() {
                     value={selectedRole || ''} 
                     onValueChange={(value) => {
                       setSelectedRole(value as UserRole);
-                      if (value === 'voter') voterLoginForm.reset(); // Reset voter form if role changes to voter
+                      if (value === 'voter') voterLoginForm.reset(); 
                     }}
                   >
                     <SelectTrigger id="role-select" className="w-full">
@@ -213,7 +212,20 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col items-center text-sm">
-              <p className="text-muted-foreground">
+              {selectedRole === 'voter' && (
+                <>
+                  <p className="text-muted-foreground">
+                    Don&apos;t have an account?
+                  </p>
+                  <Button variant="link" asChild className="mt-1">
+                    <Link href="/register">
+                      <UserPlus className="mr-2 h-4 w-4" /> Register here
+                    </Link>
+                  </Button>
+                  <Separator className="my-3"/>
+                </>
+              )}
+               <p className="text-muted-foreground text-center">
                 Select your role. Voters use email/password. Other roles are for mock demonstration.
               </p>
               <Button variant="link" asChild className="mt-2">
@@ -284,6 +296,4 @@ export default function LoginPage() {
     </div>
   )
 }
-    
-
     
