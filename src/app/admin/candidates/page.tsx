@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ShieldAlert, CheckCircle, XCircle, Users, FileText, Landmark, Calendar, AlertCircle as AlertTriangleIcon } from "lucide-react"; // Renamed AlertCircle to AlertTriangleIcon
+import { Loader2, ShieldAlert, CheckCircle, XCircle, Users, FileText, Landmark, Calendar, AlertCircle as AlertTriangleIcon } from "lucide-react";
 import { collection, onSnapshot, query, where, orderBy, getFirestore } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { format } from 'date-fns';
@@ -19,12 +19,12 @@ interface CandidateDocument {
   id: string;
   fullName?: string;
   email?: string;
-  dob?: string; // Stored as ISO string
+  dob?: string; // Stored as "YYYY-MM-DD"
   nationalId?: string;
   party?: string;
   manifesto?: string;
   isApproved?: boolean;
-  isVerified?: boolean; // Though approval might imply verification
+  isVerified?: boolean; 
   imageUrl?: string;
 }
 
@@ -49,7 +49,6 @@ export default function AdminCandidatesPage() {
     setIsLoadingCandidates(true);
     const candidatesCollectionRef = collection(db, "candidates");
 
-    // Listener for unapproved candidates
     const unapprovedQuery = query(candidatesCollectionRef, where("isApproved", "==", false), orderBy("email", "asc"));
     const unsubscribeUnapproved = onSnapshot(unapprovedQuery, (querySnapshot) => {
       const candidatesList: CandidateDocument[] = [];
@@ -64,7 +63,6 @@ export default function AdminCandidatesPage() {
       setIsLoadingCandidates(false);
     });
 
-    // Listener for approved candidates
     const approvedQuery = query(candidatesCollectionRef, where("isApproved", "==", true), orderBy("email", "asc"));
     const unsubscribeApproved = onSnapshot(approvedQuery, (querySnapshot) => {
       const candidatesList: CandidateDocument[] = [];
@@ -72,7 +70,7 @@ export default function AdminCandidatesPage() {
         candidatesList.push({ id: doc.id, ...doc.data() } as CandidateDocument);
       });
       setApprovedCandidates(candidatesList);
-      setIsLoadingCandidates(false); // Potentially set to false only after both queries load initially
+      setIsLoadingCandidates(false); 
     }, (error) => {
       console.error("Error fetching approved candidates:", error);
       toast({ title: "Error", description: "Could not fetch approved candidates. Firestore might require an index.", variant: "destructive" });
@@ -106,48 +104,66 @@ export default function AdminCandidatesPage() {
     }
   };
   
-  const renderCandidateRow = (candidate: CandidateDocument, isApprovedList: boolean) => (
-    <TableRow key={candidate.id}>
-      <TableCell className="font-medium">{candidate.fullName || 'N/A'}</TableCell>
-      <TableCell>{candidate.email || 'N/A'}</TableCell>
-      <TableCell className="text-xs">{candidate.party || 'N/A'}</TableCell>
-      <TableCell className="text-xs max-w-xs truncate" title={candidate.manifesto}>{candidate.manifesto || 'N/A'}</TableCell>
-      <TableCell className="text-xs">{candidate.dob ? format(new Date(candidate.dob), 'PP') : 'N/A'}</TableCell>
-      <TableCell className="text-xs">{candidate.nationalId || 'N/A'}</TableCell>
-      <TableCell className="text-center">
-        {isApprovedList ? (
-          <Badge variant="default" className="bg-green-500 hover:bg-green-600">Approved</Badge>
-        ) : (
-          <Badge variant="secondary">Pending</Badge>
-        )}
-      </TableCell>
-      <TableCell className="text-center">
-        {isApprovedList ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleApprovalAction(candidate.id, 'revoke')}
-            disabled={actionLoading[candidate.id]}
-            className="text-xs"
-          >
-            {actionLoading[candidate.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3 mr-1" />}
-            Revoke Approval
-          </Button>
-        ) : (
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => handleApprovalAction(candidate.id, 'approve')}
-            disabled={actionLoading[candidate.id]}
-            className="text-xs bg-primary hover:bg-primary/90"
-          >
-            {actionLoading[candidate.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-            Approve
-          </Button>
-        )}
-      </TableCell>
-    </TableRow>
-  );
+  const renderCandidateRow = (candidate: CandidateDocument, isApprovedList: boolean) => {
+    let displayDob = 'N/A';
+    if (candidate.dob && typeof candidate.dob === 'string') {
+      try {
+        const date = new Date(candidate.dob);
+        if (isNaN(date.getTime())) { // Check if the date is an "Invalid Date"
+          console.warn(`Invalid DOB string for candidate ${candidate.id}: ${candidate.dob}`);
+          displayDob = 'Invalid Date';
+        } else {
+          displayDob = format(date, 'PP');
+        }
+      } catch (e) {
+        console.error(`Error formatting DOB for candidate ${candidate.id} ('${candidate.dob}'):`, e);
+        displayDob = 'Error'; // Or 'Invalid Date' to be more specific to the user
+      }
+    }
+
+    return (
+      <TableRow key={candidate.id}>
+        <TableCell className="font-medium">{candidate.fullName || 'N/A'}</TableCell>
+        <TableCell>{candidate.email || 'N/A'}</TableCell>
+        <TableCell className="text-xs">{candidate.party || 'N/A'}</TableCell>
+        <TableCell className="text-xs max-w-xs truncate" title={candidate.manifesto}>{candidate.manifesto || 'N/A'}</TableCell>
+        <TableCell className="text-xs">{displayDob}</TableCell>
+        <TableCell className="text-xs">{candidate.nationalId || 'N/A'}</TableCell>
+        <TableCell className="text-center">
+          {isApprovedList ? (
+            <Badge variant="default" className="bg-green-500 hover:bg-green-600">Approved</Badge>
+          ) : (
+            <Badge variant="secondary">Pending</Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-center">
+          {isApprovedList ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleApprovalAction(candidate.id, 'revoke')}
+              disabled={actionLoading[candidate.id]}
+              className="text-xs"
+            >
+              {actionLoading[candidate.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3 mr-1" />}
+              Revoke Approval
+            </Button>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => handleApprovalAction(candidate.id, 'approve')}
+              disabled={actionLoading[candidate.id]}
+              className="text-xs bg-primary hover:bg-primary/90"
+            >
+              {actionLoading[candidate.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+              Approve
+            </Button>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   if (isLoadingAuth || (user?.role === 'admin' && isLoadingCandidates)) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading candidate data...</div>;
