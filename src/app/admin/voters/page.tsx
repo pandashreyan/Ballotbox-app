@@ -10,13 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ShieldAlert, UserCheck, UserX, CheckCircle, XCircle } from "lucide-react";
-import { collection, onSnapshot, doc, updateDoc, getFirestore, query, orderBy } from "firebase/firestore";
+import { Loader2, ShieldAlert, UserCheck, UserX, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { collection, onSnapshot, doc, updateDoc, getFirestore, query, where, orderBy } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from 'date-fns';
 
 interface VoterData extends AuthUser {
-  registeredAt?: string; // Assuming this might be stored
+  registeredAt?: string; 
 }
+
+type VoterFilter = "all" | "eligible" | "ineligible" | "verified" | "unverified";
 
 export default function AdminVotersPage() {
   const { user, isLoadingAuth } = useAuth();
@@ -24,20 +28,38 @@ export default function AdminVotersPage() {
   const { toast } = useToast();
   const [voters, setVoters] = React.useState<VoterData[]>([]);
   const [isLoadingVoters, setIsLoadingVoters] = React.useState(true);
-  const [isUpdating, setIsUpdating] = React.useState<Record<string, boolean>>({}); // Track loading state per voter
+  const [isUpdating, setIsUpdating] = React.useState<Record<string, boolean>>({});
+  const [filter, setFilter] = React.useState<VoterFilter>("all");
 
   const db = getFirestore(app);
 
   React.useEffect(() => {
     if (isLoadingAuth) return;
     if (user?.role !== 'admin') {
-      router.push('/'); // Redirect non-admins
+      router.push('/'); 
       return;
     }
 
     setIsLoadingVoters(true);
     const votersCollectionRef = collection(db, "voters");
-    const q = query(votersCollectionRef, orderBy("email")); // Order by email
+    let q;
+
+    switch (filter) {
+      case "eligible":
+        q = query(votersCollectionRef, where("isEligible", "==", true), orderBy("email"));
+        break;
+      case "ineligible":
+        q = query(votersCollectionRef, where("isEligible", "==", false), orderBy("email"));
+        break;
+      case "verified":
+        q = query(votersCollectionRef, where("isVerified", "==", true), orderBy("email"));
+        break;
+      case "unverified":
+        q = query(votersCollectionRef, where("isVerified", "==", false), orderBy("email"));
+        break;
+      default: // "all"
+        q = query(votersCollectionRef, orderBy("email"));
+    }
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const votersList: VoterData[] = [];
@@ -48,12 +70,12 @@ export default function AdminVotersPage() {
       setIsLoadingVoters(false);
     }, (error) => {
       console.error("Error fetching voters:", error);
-      toast({ title: "Error", description: "Could not fetch voters list.", variant: "destructive" });
+      toast({ title: "Error", description: "Could not fetch voters list. Firestore might require an index for this query.", variant: "destructive" });
       setIsLoadingVoters(false);
     });
 
     return () => unsubscribe();
-  }, [user, isLoadingAuth, router, toast, db]);
+  }, [user, isLoadingAuth, router, toast, db, filter]);
 
   const handleToggleVerification = async (voterId: string, currentStatus: boolean | undefined) => {
     setIsUpdating(prev => ({ ...prev, [voterId]: true }));
@@ -71,7 +93,6 @@ export default function AdminVotersPage() {
         title: "Success",
         description: `Voter verification status updated.`,
       });
-      // Firestore onSnapshot will update the local state automatically
     } catch (error: any) {
       console.error("Error updating verification status:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -83,8 +104,6 @@ export default function AdminVotersPage() {
    const handleToggleEligibility = async (voterId: string, currentStatus: boolean | undefined) => {
     setIsUpdating(prev => ({ ...prev, [voterId]: true }));
     try {
-      // For eligibility, we'll update Firestore directly as there's no dedicated API yet
-      // In a real app, you'd likely have an API for this too, similar to verify
       const voterDocRef = doc(db, "voters", voterId);
       await updateDoc(voterDocRef, {
         isEligible: !currentStatus
@@ -136,11 +155,27 @@ export default function AdminVotersPage() {
           <CardDescription>View and manage registered voters. Toggle their verification and eligibility status.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 max-w-xs">
+            <Label htmlFor="voter-filter" className="mb-1 block text-sm font-medium">Filter Voters</Label>
+            <Select value={filter} onValueChange={(value) => setFilter(value as VoterFilter)}>
+              <SelectTrigger id="voter-filter">
+                <SelectValue placeholder="Select filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Voters</SelectItem>
+                <SelectItem value="eligible">Eligible Voters</SelectItem>
+                <SelectItem value="ineligible">Not Eligible Voters</SelectItem>
+                <SelectItem value="verified">Verified Voters</SelectItem>
+                <SelectItem value="unverified">Not Verified Voters</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {voters.length === 0 && !isLoadingVoters ? (
             <Alert>
-              <AlertCircleIcon className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" />
               <AlertTitle>No Voters Found</AlertTitle>
-              <AlertDescription>There are no voters registered in the system yet.</AlertDescription>
+              <AlertDescription>There are no voters matching the current filter, or no voters registered yet.</AlertDescription>
             </Alert>
           ) : (
             <Table>
@@ -148,6 +183,7 @@ export default function AdminVotersPage() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>UID</TableHead>
+                  <TableHead>Registered At</TableHead>
                   <TableHead className="text-center">Eligible</TableHead>
                   <TableHead className="text-center">Verified</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
@@ -158,6 +194,9 @@ export default function AdminVotersPage() {
                   <TableRow key={voter.id}>
                     <TableCell>{voter.email || 'N/A'}</TableCell>
                     <TableCell className="text-xs">{voter.id}</TableCell>
+                    <TableCell className="text-xs">
+                      {voter.registeredAt ? format(new Date(voter.registeredAt), 'PPp') : 'N/A'}
+                    </TableCell>
                     <TableCell className="text-center">
                       {voter.isEligible ? (
                         <Badge variant="default" className="bg-green-500 hover:bg-green-600">Eligible</Badge>
@@ -204,3 +243,6 @@ export default function AdminVotersPage() {
     </div>
   );
 }
+
+
+    
