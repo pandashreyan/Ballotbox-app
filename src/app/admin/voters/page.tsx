@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, ShieldAlert, UserCheck, UserX, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import { collection, onSnapshot, doc, updateDoc, getFirestore, query, where, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, doc, getFirestore, query, where, orderBy } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 
 interface VoterData extends AuthUser {
@@ -104,10 +105,15 @@ export default function AdminVotersPage() {
    const handleToggleEligibility = async (voterId: string, currentStatus: boolean | undefined) => {
     setIsUpdating(prev => ({ ...prev, [voterId]: true }));
     try {
-      const voterDocRef = doc(db, "voters", voterId);
-      await updateDoc(voterDocRef, {
-        isEligible: !currentStatus
+      const response = await fetch(`/api/voters/${voterId}/eligible`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isEligible: !currentStatus }),
       });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update eligibility status.");
+      }
       toast({
         title: "Success",
         description: `Voter eligibility status updated.`,
@@ -243,6 +249,3 @@ export default function AdminVotersPage() {
     </div>
   );
 }
-
-
-    
