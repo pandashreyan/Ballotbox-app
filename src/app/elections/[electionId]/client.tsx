@@ -24,10 +24,12 @@ interface ClientElectionStatus {
 export function ElectionDetailClient({ initialElection }: ElectionDetailClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); 
+  const { user, isLoadingAuth } = useAuth(); 
   
   const [election, setElection] = useState<Election>(initialElection);
   const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null);
+  // isLoadingClientState is for client-side specific async operations or checks,
+  // distinct from isLoadingAuth from useAuth hook.
   const [isLoadingClientState, setIsLoadingClientState] = useState(true); 
 
   const [clientFormattedStartDate, setClientFormattedStartDate] = useState<string | null>(null);
@@ -60,36 +62,35 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       setClientElectionStatusMessage({ type: "ongoing", message: "This election is currently ongoing."});
     }
 
-    const storedVotedState = localStorage.getItem(`ballotbox_voted_${electionId}`);
-    if (storedVotedState) {
-      setVotedCandidateId(storedVotedState);
+    // User-specific vote storage
+    if (user && electionId) {
+      const VOTE_STORAGE_KEY = `ballotbox_voted_${user.id}_${electionId}`;
+      const storedVotedState = localStorage.getItem(VOTE_STORAGE_KEY);
+      if (storedVotedState) {
+        setVotedCandidateId(storedVotedState);
+      } else {
+        setVotedCandidateId(null); // Explicitly set to null if no vote found for this user
+      }
+    } else {
+        setVotedCandidateId(null); // No user, so no vote
     }
-
-    // No longer loading local votes for counts, DB is source of truth for results
-    // const storedVotes = localStorage.getItem(`ballotbox_votes_${electionId}`);
-    // if (storedVotes) {
-    //   const votes = JSON.parse(storedVotes) as Record<string, number>;
-    //   setElection(prevElection => ({
-    //     ...prevElection,
-    //     candidates: prevElection.candidates.map(c => ({
-    //       ...c,
-    //       voteCount: votes[c.id] || c.voteCount || 0,
-    //     })),
-    //   }));
-    // }
-    setIsLoadingClientState(false);
-  }, [electionId, election.startDate, election.endDate]);
+    
+    setIsLoadingClientState(false); // Done with client-side setup for this effect
+  }, [electionId, election.startDate, election.endDate, user]); // Added user to dependency array
 
   const canUserVote = useMemo(() => {
+    // User must have 'voter' or 'candidate' role to be able to vote.
     return user?.role === 'voter' || user?.role === 'candidate';
   }, [user]);
 
   const handleVote = async (candidateId: string) => {
-    if (votedCandidateId || !clientIsElectionOngoing || !canUserVote) return;
+    if (votedCandidateId || !clientIsElectionOngoing || !canUserVote || !user || !electionId) return;
+
+    const VOTE_STORAGE_KEY = `ballotbox_voted_${user.id}_${electionId}`;
 
     // Optimistic UI update
     setVotedCandidateId(candidateId);
-    localStorage.setItem(`ballotbox_voted_${electionId}`, candidateId);
+    localStorage.setItem(VOTE_STORAGE_KEY, candidateId);
     
     setElection(prev => {
         if (!prev) return prev;
@@ -118,18 +119,18 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to persist vote to DB:', errorData.message);
-        // Attempt to revert optimistic UI update (optional, can be complex)
-        setElection(prev => { // Revert vote count
+        // Attempt to revert optimistic UI update
+        setElection(prev => { 
             if (!prev) return prev;
             return {
                 ...prev,
                 candidates: prev.candidates.map(c => 
-                    c.id === candidateId ? { ...c, voteCount: (c.voteCount || 1) - 1 } : c //
+                    c.id === candidateId ? { ...c, voteCount: (c.voteCount || 1) - 1 } : c 
                 )
             }
         });
-        setVotedCandidateId(null); // Allow re-voting if server save failed
-        localStorage.removeItem(`ballotbox_voted_${electionId}`);
+        setVotedCandidateId(null); 
+        localStorage.removeItem(VOTE_STORAGE_KEY);
 
         toast({
           title: "Vote Save Failed",
@@ -144,7 +145,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
       }
     } catch (error) {
       console.error('Error persisting vote to DB:', error);
-       setElection(prev => { // Revert vote count
+       setElection(prev => { 
             if (!prev) return prev;
             return {
                 ...prev,
@@ -154,7 +155,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
             }
         });
       setVotedCandidateId(null);
-      localStorage.removeItem(`ballotbox_voted_${electionId}`);
+      localStorage.removeItem(VOTE_STORAGE_KEY);
       toast({
         title: "Vote Sync Error",
         description: "Could not save your vote to the server due to a network or server error. Please try again.",
@@ -166,7 +167,8 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
   const serverFormattedStartDate = election.startDate.split('T')[0];
   const serverFormattedEndDate = election.endDate.split('T')[0];
 
-  if (isLoadingClientState || !isClientMounted || user === undefined) {
+  // Combined loading state: consider both auth loading and client-side setup loading
+  if (isLoadingAuth || isLoadingClientState || !isClientMounted) {
      return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading election details...</div>;
   }
 
@@ -182,7 +184,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 <h1 className="text-3xl font-headline font-bold text-primary mb-2">{election.name}</h1>
                 <p className="text-muted-foreground mb-1 flex items-center">
                 <CalendarDays className="mr-2 h-4 w-4" /> 
-                {isClientMounted && clientFormattedStartDate ? clientFormattedStartDate : serverFormattedStartDate} - {isClientMounted && clientFormattedEndDate ? clientFormattedEndDate : serverFormattedEndDate}
+                {clientFormattedStartDate ? clientFormattedStartDate : serverFormattedStartDate} - {clientFormattedEndDate ? clientFormattedEndDate : serverFormattedEndDate}
                 </p>
                 <p className="text-sm text-foreground/80 mb-4">{election.description}</p>
             </div>
@@ -196,7 +198,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </div>
       </section>
 
-      {isClientMounted && clientElectionStatusMessage && clientElectionStatusMessage.type !== "ongoing" && (
+      {clientElectionStatusMessage && clientElectionStatusMessage.type !== "ongoing" && (
         <Alert 
           variant={clientElectionStatusMessage.type === "concluded" ? "default" : "default"} 
           className={clientElectionStatusMessage.type === "concluded" ? "bg-gray-100 border-gray-300 text-gray-700" : "bg-blue-100 border-blue-300 text-blue-700"}
@@ -209,7 +211,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
 
-      {isClientMounted && votedCandidateId && clientIsElectionOngoing && (
+      {votedCandidateId && clientIsElectionOngoing && (
          <Alert variant="default" className="bg-accent/30 border-accent text-accent-foreground">
           <CheckCircle className="h-4 w-4" />
           <AlertTitle>Vote Recorded</AlertTitle>
@@ -219,7 +221,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
       
-      {isClientMounted && !canUserVote && clientIsElectionOngoing && !votedCandidateId && (
+      {!canUserVote && clientIsElectionOngoing && !votedCandidateId && (
          <Alert variant="default" className="bg-yellow-100 border-yellow-300 text-yellow-700">
           <Info className="h-4 w-4" />
           <AlertTitle>Voting Information</AlertTitle>
@@ -240,7 +242,7 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
                 onVote={handleVote}
                 hasVoted={!!votedCandidateId}
                 votedForThisCandidate={votedCandidateId === candidate.id}
-                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing}
+                isElectionOngoing={clientIsElectionOngoing === null ? false : clientIsElectionOngoing} // Ensure boolean
                 canVote={!!canUserVote} 
               />
             ))}
@@ -252,3 +254,4 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
     </div>
   );
 }
+
