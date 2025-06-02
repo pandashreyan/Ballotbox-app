@@ -67,6 +67,7 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
+                 {/* Admin-specific links are rendered here if user.role is 'admin' */}
                  {user.role === 'admin' && (
                   <>
                     <DropdownMenuLabel>Admin Panel</DropdownMenuLabel>
