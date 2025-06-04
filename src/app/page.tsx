@@ -9,6 +9,7 @@ import { mockAnnouncements } from '@/lib/mockData'; // Import mock announcements
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // For Announcement card
 import Image from 'next/image'; // For Announcement image
 import { Separator } from '@/components/ui/separator';
+import { FormattedDate } from '@/components/FormattedDate'; // Import the new component
 
 async function getElections(): Promise<Election[] | { error: string }> {
   try {
@@ -44,7 +45,7 @@ async function getElections(): Promise<Election[] | { error: string }> {
             id: candidateIdString,
             name: candidate.name,
             platform: candidate.platform,
-            party: candidate.party, 
+            party: candidate.party,
             imageUrl: candidate.imageUrl,
             voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
             electionId: electionIdString,
@@ -144,18 +145,20 @@ export default async function HomePage() {
                 <CardHeader>
                   {announcement.imageUrl && (
                     <div className="relative w-full h-48 mb-4 rounded-t-md overflow-hidden">
-                      <Image 
-                        src={announcement.imageUrl} 
-                        alt={announcement.title} 
-                        layout="fill" 
-                        objectFit="cover"
+                      <Image
+                        src={announcement.imageUrl}
+                        alt={announcement.title}
+                        fill={true}
+                        style={{ objectFit: 'cover' }}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
                         data-ai-hint="announcement event"
+                        priority={false}
                       />
                     </div>
                   )}
                   <CardTitle className="text-xl font-headline text-primary">{announcement.title}</CardTitle>
                   <CardDescription>
-                    Posted on: {new Date(announcement.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    Posted on: <FormattedDate dateString={announcement.date} />
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
