@@ -1,4 +1,4 @@
-# 🗳️ BallotBox — AI-Powered Election Management Platform ✨  https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmVmcDg4dWhzanRhczliNXVram45d3NmNnpkcXJwejY3aXoybHZsZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GHPSN2mwXEnuPGuOiH/giphy.gif
+# 🗳️ BallotBox — AI-Powered Election Management Platform ✨ src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmVmcDg4dWhzanRhczliNXVram45d3NmNnpkcXJwejY3aXoybHZsZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GHPSN2mwXEnuPGuOiH/giphy.gif" alt="Welcome GIF" width="200" />
 ![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)  
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)  
 [![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://reactjs.org/)  
