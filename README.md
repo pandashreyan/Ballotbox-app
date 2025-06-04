@@ -1,11 +1,17 @@
-# 🗳️ BallotBox — AI-Powered Election Management Platform ✨ src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmVmcDg4dWhzanRhczliNXVram45d3NmNnpkcXJwejY3aXoybHZsZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GHPSN2mwXEnuPGuOiH/giphy.gif" alt="Welcome GIF" width="200" />
-![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)  
+# 🗳️ BallotBox — AI-Powered Election Management Platform ✨
+
+<p align="center">
+  <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmVmcDg4dWhzanRhczliNXVram45d3NmNnpkcXJwejY3aXoybHZsZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GHPSN2mwXEnuPGuOiH/giphy.gif" alt="Welcome GIF" width="300" />
+</p>
+
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)  
 [![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://reactjs.org/)  
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-skyblue?logo=tailwind-css)](https://tailwindcss.com/)  
 [![Firebase](https://img.shields.io/badge/Firebase-SDK_v11-orange?logo=firebase)](https://firebase.google.com/)  
 [![MongoDB](https://img.shields.io/badge/MongoDB-6-green?logo=mongodb)](https://www.mongodb.com/)  
 [![Genkit](https://img.shields.io/badge/Genkit_AI-v1-brightgreen?logo=google-cloud)](https://firebase.google.com/docs/genkit)
+
 
 ---
 
