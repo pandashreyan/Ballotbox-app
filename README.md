@@ -1,186 +1,213 @@
 
-# BallotBox - Full-Stack Election Management Platform
+# BallotBox: AI-Powered Election Management Platform 🗳️✨
 
-BallotBox is a modern, full-stack election management application built with Next.js, React, ShadCN UI, Tailwind CSS, MongoDB, Firebase, and Genkit for AI-powered features. It allows administrators to create and manage elections, candidates to register and participate, and voters to cast their votes securely.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://reactjs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-skyblue?logo=tailwind-css)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-SDK_v11-orange?logo=firebase)](https://firebase.google.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-6-green?logo=mongodb)](https://www.mongodb.com/)
+[![Genkit](https://img.shields.io/badge/Genkit_AI-v1-brightgreen?logo=google-cloud)](https://firebase.google.com/docs/genkit)
 
-<!-- Add a Live Demo link if you deploy it -->
-<!-- **Live Demo:** [Link to your deployed app] -->
+BallotBox is a modern, secure, and feature-rich full-stack election management application. Built with Next.js, React, ShadCN UI, Tailwind CSS, MongoDB, Firebase, and powered by Genkit AI, it provides a seamless experience for administrators, candidates, and voters. From creating elections to casting votes and getting AI-driven insights, BallotBox aims to make the democratic process more accessible and transparent.
 
-## Features
+<!-- **Live Demo:** [Link to your deployed app (Coming Soon!)] -->
+
+## Key Features 🚀
 
 ### General Features:
-*   **Role-Based Access Control:** Distinct experiences for Admins, Candidates, and Voters.
-*   **Responsive Design:** User interface adapts to various screen sizes.
+*   **Responsive Design:** Adapts to various screen sizes for a consistent experience on desktop and mobile.
 *   **Light/Dark Mode:** Theme support based on user preference.
-*   **AI-Powered Platform Summaries:** Genkit and Gemini are used to provide concise summaries of candidate platforms.
+*   **Role-Based Access Control:** Distinct interfaces and functionalities for Admins, Candidates, and Voters.
 *   **Real-time Updates:**
     *   Election results page polls for updates.
     *   Admin pages for voter and candidate management update in real-time using Firestore listeners.
+*   **Custom Error Pages:** User-friendly error pages for 404 (Not Found) and 500 (Server Error).
+*   **Optimized Fonts & Images:** Utilizes `next/font` for font optimization and `next/image` for image optimization.
+*   **Toasts/Notifications:** For user feedback on actions.
+
+### AI-Powered Features (Genkit & Gemini):
+*   **Candidate Platform Summarization:** AI generates concise summaries of candidate manifestos.
+*   **Election Information Chatbot:** An interactive chatbot to answer user questions about general election processes, global election history, and current national leadership (with appropriate disclaimers).
 
 ### Admin Features:
 *   **Election Management:**
-    *   Create new elections with details (name, description, dates).
-    *   Add initial candidates to elections.
+    *   Create new elections with details (name, description, dates, initial candidates).
     *   Delete existing elections.
-*   **Candidate Approval:**
-    *   View list of registered candidates awaiting approval.
+*   **Candidate Approval Management:**
+    *   View list of registered candidates awaiting profile approval.
     *   Approve or revoke candidate profile registrations.
+    *   Real-time updates on candidate list.
 *   **Voter Management:**
     *   View list of all registered voters.
     *   Toggle voter eligibility status.
     *   Toggle voter verification status.
-    *   Filter voter list by status.
+    *   Filter voter list by various statuses (eligible, verified, etc.).
+    *   Real-time updates on voter list.
 
 ### Candidate Features:
-*   **Profile Registration:** Candidates can register their full profile (personal details, party, manifesto).
-*   **Election Participation:** Register for specific upcoming elections created by an admin.
+*   **Profile Registration:** Candidates can register their full profile via Firebase Auth and Firestore (personal details, party, manifesto, DOB, National ID).
+*   **Election Participation:** Register for specific upcoming elections created by an admin (adds them to MongoDB election document).
 *   **Voting Rights:** Candidates can also cast votes in elections they are eligible for.
 
 ### Voter Features:
-*   **User Registration:** Voters can create accounts using email and password.
+*   **User Registration & Login:** Voters can create accounts and log in using Firebase Authentication (Email/Password).
 *   **View Elections:** Browse ongoing, upcoming, and concluded elections.
-*   **View Candidate Details:** See candidate information, party, and platform.
-*   **Cast Vote:** Securely cast a single vote per election (if eligible and verified).
+*   **View Candidate Details:** See candidate information, party, and AI-summarized platform.
+*   **Secure Voting:** Cast a single vote per election (if eligible and verified by admin, and if they haven't voted already for that election).
 *   **Vote Confirmation:** See a confirmation of their cast vote.
 
-## Tech Stack
+## Tech Stack 🛠️
 
 *   **Framework:** [Next.js](https://nextjs.org/) 15 (App Router)
-*   **Frontend:** [React](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/)
+*   **Frontend:** [React](https://reactjs.org/) 18, [TypeScript](https://www.typescriptlang.org/)
 *   **UI Components:** [ShadCN UI](https://ui.shadcn.com/)
 *   **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-*   **State Management:** React Hooks (`useState`, `useEffect`, custom hooks)
+*   **State Management:** React Hooks (`useState`, `useEffect`, custom hooks like `useAuth`)
 *   **Forms:** [React Hook Form](https://react-hook-form.com/)
 *   **Schema Validation:** [Zod](https://zod.dev/)
-*   **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth) (for Voters/Candidates), Mock Auth (for Admin and role switching)
+*   **Authentication:**
+    *   [Firebase Authentication](https://firebase.google.com/docs/auth): For Voters & Candidates (Email/Password).
+    *   Mock Authentication: For Admin role and easy role switching in development (via `localStorage` and `useAuth` hook).
 *   **Databases:**
-    *   [MongoDB](https://www.mongodb.com/): Stores election data, candidate lists within elections, and vote counts.
-    *   [Firebase Firestore](https://firebase.google.com/docs/firestore): Stores user profiles (voters, candidates) and their statuses.
-*   **AI Integration:** [Genkit (Google AI)](https://firebase.google.com/docs/genkit) with Gemini models for features like platform summarization.
-*   **API Layer:** Next.js API Routes
+    *   [MongoDB](https://www.mongodb.com/): Stores election data, candidates within elections, and vote counts.
+    *   [Firebase Firestore](https://firebase.google.com/docs/firestore): Stores user profiles (voters, candidates) including their statuses (eligibility, verification, approval).
+*   **AI Integration:** [Genkit (Google AI)](https://firebase.google.com/docs/genkit) with Gemini models (e.g., Gemini 2.0 Flash) for AI flows.
+*   **API Layer:** Next.js API Routes (Server Actions are also used for form submissions where appropriate).
 
-## Getting Started
-
-Follow these instructions to set up and run the project locally.
-
-### Prerequisites
+## Prerequisites
 
 *   [Node.js](https://nodejs.org/) (v18.x or later recommended)
 *   [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
 *   [Git](https://git-scm.com/)
+*   Access to MongoDB (local instance or a cloud service like MongoDB Atlas)
+*   A Firebase Project
 
-### 1. Clone the Repository
+## Environment Variables
 
-```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
-cd YOUR_REPOSITORY_NAME
-```
-
-### 2. Environment Variables
-
-Create a `.env` file in the root of your project and add the following environment variables.
-Replace the placeholder values with your actual credentials.
+Create a `.env` file in the root of your project and add the following environment variables. Replace placeholder values with your actual credentials.
 
 ```env
 # MongoDB Configuration
-MONGODB_URI="your_mongodb_connection_string"
-MONGODB_DB_NAME="your_mongodb_database_name"
+MONGODB_URI="your_mongodb_connection_string_here"
+MONGODB_DB_NAME="your_mongodb_database_name_here"
 
-# Firebase Configuration (primarily for Genkit server-side use if needed, client-side is in src/lib/firebase.ts)
-# Ensure your src/lib/firebase.ts has the correct client-side Firebase config.
-# For Genkit with Google AI, you might need GOOGLE_API_KEY if not using Application Default Credentials.
-# GOOGLE_API_KEY="your_google_ai_api_key_for_genkit"
+# Firebase Configuration (client-side keys are in src/lib/firebase.ts)
+# For Genkit with Google AI, you'll need a Google AI API Key.
+# Ensure this is set in your environment where the Genkit server runs.
+# GOOGLE_API_KEY="your_google_ai_api_key_for_genkit" (if not using Application Default Credentials)
 
-# NEXT_PUBLIC_ variables are exposed to the browser.
-# If you move your Firebase client config to .env, prefix with NEXT_PUBLIC_
-# e.g., NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
+# Base URL of your deployed application (used for metadata, etc.)
+# For local development:
+NEXT_PUBLIC_APP_URL="http://localhost:9002"
+# For production, set this to your actual domain:
+# NEXT_PUBLIC_APP_URL="https://yourdomain.com"
 ```
 
-**Note on Firebase Configuration:** The client-side Firebase configuration is currently hardcoded in `src/lib/firebase.ts`. For production, it's best practice to move these to environment variables (e.g., `NEXT_PUBLIC_FIREBASE_API_KEY`) and reference them in `src/lib/firebase.ts`.
+**Note on Firebase Client Configuration:** The client-side Firebase configuration is located in `src/lib/firebase.ts`. For enhanced security in production, consider moving these to `NEXT_PUBLIC_` environment variables and referencing them in `src/lib/firebase.ts`.
 
-### 3. Install Dependencies
+## Installation
 
-```bash
-npm install
-# or
-yarn install
-```
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/pandashreyan/Ballotbox-app.git
+    cd Ballotbox-app
+    ```
 
-### 4. Database Setup
+2.  **Install Dependencies:**
+    ```bash
+    npm install
+    # or
+    # yarn install
+    ```
+
+## Database Setup
 
 *   **MongoDB:**
-    *   Ensure you have a MongoDB instance running (local or cloud-based like MongoDB Atlas).
-    *   Update the `MONGODB_URI` and `MONGODB_DB_NAME` in your `.env` file.
-    *   No specific schema setup is required beforehand; collections and documents will be created as the app runs.
+    *   Ensure you have a MongoDB instance running.
+    *   Update `MONGODB_URI` and `MONGODB_DB_NAME` in your `.env` file.
+    *   Collections (`elections`) will be created automatically as the app runs.
 *   **Firebase Firestore:**
     *   Set up a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
-    *   Enable Firestore in your Firebase project.
-    *   Enable Email/Password sign-in method in Firebase Authentication.
-    *   Copy your Firebase project's configuration details into `src/lib/firebase.ts`.
-    *   Firestore security rules should be configured for production to restrict access appropriately.
+    *   Enable **Firestore** in your Firebase project (Native mode).
+    *   Enable **Email/Password** sign-in method in Firebase Authentication.
+    *   Copy your Firebase project's web configuration details into `src/lib/firebase.ts`.
+    *   **Important:** Configure Firestore Security Rules for production to restrict access appropriately (e.g., only admins can modify certain fields, users can only update their own profiles). The current `firestore.rules` might be basic and need review.
+    *   The necessary Firestore indexes are defined in `firestore.indexes.json`. You may need to deploy these via the Firebase CLI or allow Firestore to auto-create them (which can take time).
 
-### 5. Running the Application
+## Running the Application
 
-The application consists of the Next.js frontend/backend and the Genkit development server for AI features.
+The application requires two separate terminal processes to run concurrently in development:
 
-*   **Run the Next.js Development Server:**
+1.  **Run the Next.js Development Server:**
+    This serves the frontend and Next.js API routes.
     ```bash
     npm run dev
-    # or
-    yarn dev
     ```
-    This will typically start the Next.js app on `http://localhost:9002`.
+    The Next.js app will typically start on `http://localhost:9002`.
 
-*   **Run the Genkit Development Server (in a separate terminal):**
-    The Genkit server handles AI flow executions.
+2.  **Run the Genkit Development Server (in a separate terminal):**
+    This server handles the execution of AI flows (like platform summarization and the chatbot).
     ```bash
     npm run genkit:dev
-    # or for auto-reloading on changes:
+    ```
+    Or, for auto-reloading Genkit flows on changes:
+    ```bash
     npm run genkit:watch
     ```
-    This usually starts the Genkit server on `http://localhost:3400` (check console output).
+    The Genkit server usually starts on `http://localhost:3400` (check your console output).
 
-Visit `http://localhost:9002` (or your configured port) in your browser.
+Visit `http://localhost:9002` (or your configured port) in your browser to use the application.
 
 ## Authentication & Roles
 
-*   **Voters and Candidates:** Register and log in using Firebase Authentication.
-*   **Admin:** Admin functionality is accessed via a mock role selection in the header dropdown. This is for development and testing convenience.
-*   **Role Switching:** The header dropdown allows switching between mock roles (Admin, Candidate, Voter, Guest) to test different parts of the application without multiple accounts. If a Firebase user is logged in, switching to "Admin" or "Candidate" (mock) will sign out the Firebase user. Switching to "Voter" (mock) will also sign out the Firebase user and simulate a mock voter.
+*   **Voters and Candidates:** Register and log in using Firebase Authentication (Email/Password). Their respective Firestore documents (`voters/{uid}` or `candidates/{uid}`) store role-specific information and statuses.
+*   **Admin:** Admin functionality is primarily accessed via a mock role selection in the header dropdown. This is for development and testing convenience. Selecting "Admin" via the dropdown signs out any active Firebase user and sets a mock admin context.
+*   **Role Switching:** The header dropdown allows switching between mock roles (Admin, Candidate, Voter, Guest/Logout) to test different parts of theapplication. If a Firebase user is logged in, switching to "Admin" or a mock "Candidate" will sign out the Firebase user. Switching to a mock "Voter" will also sign out the Firebase user.
 
 ## Available Scripts
 
 *   `npm run dev`: Starts the Next.js development server (with Turbopack).
 *   `npm run genkit:dev`: Starts the Genkit development server.
-*   `npm run genkit:watch`: Starts the Genkit development server with file watching.
+*   `npm run genkit:watch`: Starts the Genkit development server with file watching for auto-reloads.
 *   `npm run build`: Builds the Next.js application for production.
-*   `npm run start`: Starts the Next.js production server.
-*   `npm run lint`: Runs ESLint.
+*   `npm run start`: Starts the Next.js production server (after `npm run build`).
+*   `npm run lint`: Runs ESLint to check for code quality issues.
 *   `npm run typecheck`: Runs TypeScript type checking.
 
 ## Deployment
 
-For deploying this Next.js application, platforms like [Vercel](https://vercel.com/) (by the creators of Next.js) or [Netlify](https://www.netlify.com/) are recommended.
+For deploying this Next.js application, platforms like [Vercel](https://vercel.com/) (by the creators of Next.js) or [Netlify](https://www.netlify.com/) are highly recommended due to their excellent Next.js support.
 
 1.  **Push your code to a Git provider** (e.g., GitHub, GitLab).
 2.  **Connect your Git repository** to your chosen hosting platform.
-3.  **Configure Environment Variables** on the hosting platform (MongoDB URI, DB Name, Firebase API keys, Genkit keys, etc.).
-4.  **Build Command:** Typically `next build` or `npm run build`.
+3.  **Configure Environment Variables** on the hosting platform (ensure all variables from your `.env` file, including `GOOGLE_API_KEY` for Genkit and `NEXT_PUBLIC_APP_URL`, are set).
+4.  **Build Command:** Typically `npm run build` or `next build`.
 5.  **Publish Directory:** Usually `.next`.
-6.  **Deploying Genkit Flows:** Genkit flows are part of the Next.js server-side code and will be deployed with your Next.js application. Ensure any necessary API keys (e.g., for Google AI) are set as environment variables on your hosting platform.
+6.  **Deploying Genkit Flows:** Genkit flows are part of the Next.js server-side code and will be deployed with your Next.js application. Ensure any necessary API keys (e.g., `GOOGLE_API_KEY`) are set as environment variables on your hosting platform where the serverless functions/server will run.
 
-<!--
 ## Contributing
 
-Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) (you'll need to create this file) before submitting a pull request.
--->
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+Don't forget to give the project a star! Thanks again!
+
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
 <!--
 ## License
 
-This project is licensed under the [MIT License](LICENSE) (you'll need to create this file and choose a license).
+Distributed under the MIT License. See `LICENSE.txt` for more information.
+(You'll need to create a LICENSE.txt file if you want to formalize this. For now, the badge indicates MIT.)
 -->
+If you don't have a `LICENSE.txt` file, you can create one with the standard MIT License text.
 
 ---
 
-Happy Voting!
+Happy Voting and Building! 💻
+```
