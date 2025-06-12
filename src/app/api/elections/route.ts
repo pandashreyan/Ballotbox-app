@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         description: restOfCreatedElection.description,
         startDate: new Date(restOfCreatedElection.startDate).toISOString(),
         endDate: new Date(restOfCreatedElection.endDate).toISOString(),
-        candidates: restOfCreatedElection.candidates.map(c => ({
+        candidates: restOfCreatedElection.candidates.map((c: { id: any; name: any; platform: any; party: any; imageUrl: any; voteCount: any; }) => ({
             id: c.id,
             name: c.name,
             platform: c.platform,
