@@ -4,6 +4,7 @@ import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import * as z from 'zod';
 import type { Election as ElectionType, Candidate as CandidateType } from '@/lib/types'; // For return type
+import { revalidatePath } from 'next/cache'; // Added for revalidation
 
 const candidateSchema = z.object({
   name: z.string().min(2),
@@ -88,6 +89,8 @@ export async function POST(req: Request) {
             electionId: _id.toString(), // Ensure parent electionId
         }))
     };
+
+    revalidatePath('/'); // Revalidate the homepage path
 
     return NextResponse.json({
         message: 'Election created successfully!',
