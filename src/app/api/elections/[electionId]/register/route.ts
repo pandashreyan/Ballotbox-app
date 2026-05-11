@@ -11,8 +11,8 @@ const candidateRegistrationSchema = z.object({
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
 });
 
-export async function POST(req: Request, { params }: { params: { electionId: string } }) {
-  const { electionId } = params;
+export async function POST(req: Request, { params }: { params: Promise<{ electionId: string }> }) {
+  const { electionId } = await params;
 
   if (!ObjectId.isValid(electionId)) {
     return NextResponse.json({ message: 'Invalid election ID format.' }, { status: 400 });

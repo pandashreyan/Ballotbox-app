@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 
-export async function POST(req: Request, { params }: { params: { candidateId: string } }) {
-  const { candidateId } = params;
+export async function POST(req: Request, { params }: { params: Promise<{ candidateId: string }> }) {
+  const { candidateId } = await params;
 
   if (!candidateId) {
     return NextResponse.json({ message: 'Candidate ID is required.' }, { status: 400 });

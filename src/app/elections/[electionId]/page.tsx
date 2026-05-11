@@ -71,8 +71,9 @@ async function getElectionById(id: string): Promise<AppElectionType | null> {
   }
 }
 
-export default async function ElectionDetailPage({ params }: { params: { electionId: string } }) {
-  const election = await getElectionById(params.electionId);
+export default async function ElectionDetailPage({ params }: { params: Promise<{ electionId: string }> }) {
+  const { electionId } = await params;
+  const election = await getElectionById(electionId);
 
   if (!election) {
     notFound();

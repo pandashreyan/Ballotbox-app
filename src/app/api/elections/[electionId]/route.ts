@@ -23,8 +23,8 @@ interface ElectionInDB {
 
 export const dynamic = 'force-dynamic'; // Ensures fresh data on every request
 
-export async function GET(request: Request, { params }: { params: { electionId: string } }) {
-  const { electionId } = params;
+export async function GET(request: Request, { params }: { params: Promise<{ electionId: string }> }) {
+  const { electionId } = await params;
 
   if (!ObjectId.isValid(electionId)) {
     return NextResponse.json({ message: 'Invalid election ID format.' }, { status: 400 });
@@ -76,8 +76,8 @@ export async function GET(request: Request, { params }: { params: { electionId: 
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { electionId: string } }) {
-  const { electionId } = params;
+export async function DELETE(request: Request, { params }: { params: Promise<{ electionId: string }> }) {
+  const { electionId } = await params;
 
   // In a real app, add authentication here to ensure only admins can delete
   // For now, client-side UI controls this, but API should be secured.
