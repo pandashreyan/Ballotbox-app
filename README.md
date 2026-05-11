@@ -112,7 +112,15 @@ npm install
 npm run dev
 \`\`\`
 
-The application will be live at: **[http://localhost:9002](http://localhost:9002)**
+### 2️⃣ Run Genkit AI server (Optional)
+```bash
+npm run genkit:dev
+# Or with hot reload:
+npm run genkit:watch
+```
+
+* **Local Dev URL**: [http://localhost:9002](http://localhost:9002)
+* **Production Live URL**: [https://ballotbox-app-production.up.railway.app/](https://ballotbox-app-production.up.railway.app/)
 
 ---
 
