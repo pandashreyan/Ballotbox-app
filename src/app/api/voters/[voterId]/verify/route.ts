@@ -1,37 +1,17 @@
-
 import { NextResponse } from 'next/server';
-import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { app } from '@/lib/firebase'; // Your Firebase app initialization
+import clientPromise, { dbName } from '@/lib/mongodb';
 import * as z from 'zod';
-
-const db = getFirestore(app);
 
 const verifySchema = z.object({
   isVerified: z.boolean(),
 });
 
-export async function POST(req: Request, { params }: { params: { voterId: string } }) {
-  const { voterId } = params;
+export async function POST(req: Request, { params }: { params: Promise<{ voterId: string }> }) {
+  const { voterId } = await params;
 
   if (!voterId) {
     return NextResponse.json({ message: 'Voter ID is required.' }, { status: 400 });
   }
-
-  // In a real app, you MUST add authentication here to ensure only admins can call this.
-  // For example, verify a Firebase ID token and check for admin custom claims.
-  // const authorization = req.headers.get('Authorization');
-  // if (!authorization || !authorization.startsWith('Bearer ')) {
-  //   return NextResponse.json({ message: 'Unauthorized: Missing or invalid token.' }, { status: 401 });
-  // }
-  // const idToken = authorization.split('Bearer ')[1];
-  // try {
-  //   const decodedToken = await admin.auth().verifyIdToken(idToken); // Using Firebase Admin SDK
-  //   if (!decodedToken.admin) { // Assuming you have an 'admin' custom claim
-  //     return NextResponse.json({ message: 'Forbidden: Not an admin.' }, { status: 403 });
-  //   }
-  // } catch (error) {
-  //   return NextResponse.json({ message: 'Unauthorized: Invalid token.' }, { status: 401 });
-  // }
 
   try {
     const rawData = await req.json();
@@ -42,17 +22,19 @@ export async function POST(req: Request, { params }: { params: { voterId: string
     }
 
     const { isVerified } = validationResult.data;
-    const voterDocRef = doc(db, 'voters', voterId);
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const votersCollection = db.collection('voters');
 
-    // Check if voter exists
-    const voterDoc = await getDoc(voterDocRef);
-    if (!voterDoc.exists()) {
+    // Update in MongoDB
+    const result = await votersCollection.updateOne(
+      { uid: voterId },
+      { $set: { isVerified: isVerified } }
+    );
+
+    if (result.matchedCount === 0) {
       return NextResponse.json({ message: 'Voter not found.' }, { status: 404 });
     }
-
-    await updateDoc(voterDocRef, {
-      isVerified: isVerified,
-    });
 
     return NextResponse.json({ message: `Voter verification status updated successfully to ${isVerified}.` }, { status: 200 });
 

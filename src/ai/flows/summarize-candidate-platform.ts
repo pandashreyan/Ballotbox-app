@@ -30,7 +30,19 @@ export type SummarizeCandidatePlatformOutput = z.infer<
 export async function summarizeCandidatePlatform(
   input: SummarizeCandidatePlatformInput
 ): Promise<SummarizeCandidatePlatformOutput> {
-  return summarizeCandidatePlatformFlow(input);
+  try {
+    return await summarizeCandidatePlatformFlow(input);
+  } catch (error: any) {
+    console.warn("Summarize candidate platform hit an error, triggering graceful local fallback:", error.message || error);
+    const text = input.platformText || "";
+    const cleanText = text.replace(/<[^>]*>/g, '').trim();
+    const summaryText = cleanText.length > 150 
+      ? cleanText.slice(0, 150).trim() + "..." 
+      : cleanText || "No platform details provided by this candidate.";
+    return {
+      summary: summaryText
+    };
+  }
 }
 
 const prompt = ai.definePrompt({

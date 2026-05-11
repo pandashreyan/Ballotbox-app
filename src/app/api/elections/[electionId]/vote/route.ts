@@ -1,17 +1,16 @@
 
-'use server';
-
 import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import * as z from 'zod';
+import { globalEmitter } from '@/lib/events';
 
 const voteSchema = z.object({
   candidateId: z.string().min(1, { message: "Candidate ID is required." }),
 });
 
-export async function POST(req: Request, { params }: { params: { electionId: string } }) {
-  const { electionId } = params;
+export async function POST(req: Request, { params }: { params: Promise<{ electionId: string }> }) {
+  const { electionId } = await params;
 
   if (!ObjectId.isValid(electionId)) {
     return NextResponse.json({ message: 'Invalid election ID format.' }, { status: 400 });
@@ -68,6 +67,22 @@ export async function POST(req: Request, { params }: { params: { electionId: str
     if (result.modifiedCount === 0) {
       // This could happen if the candidateId didn't match, or _id didn't match (less likely if election was found).
       return NextResponse.json({ message: 'Failed to record vote. Candidate or election may not match.' }, { status: 500 });
+    }
+
+    // Fetch the updated state to emit real-time updates via SSE
+    const updatedElection = await electionsCollection.findOne({ _id: electionObjectId });
+    if (updatedElection) {
+      const resultsPayload = {
+        electionId,
+        electionName: updatedElection.name,
+        results: updatedElection.candidates.map((candidate: any) => ({
+          candidateId: candidate.id,
+          candidateName: candidate.name,
+          voteCount: typeof candidate.voteCount === 'number' ? candidate.voteCount : 0,
+        })).sort((a: any, b: any) => b.voteCount - a.voteCount),
+      };
+      // Emit the real-time vote event
+      globalEmitter.emit(`vote:${electionId}`, resultsPayload);
     }
 
     return NextResponse.json({ message: 'Vote recorded successfully!' }, { status: 200 });

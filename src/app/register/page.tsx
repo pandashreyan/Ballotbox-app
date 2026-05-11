@@ -56,14 +56,33 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
       const user = userCredential.user;
 
-      // Create a document in Firestore 'voters' collection
-      await setDoc(doc(db, "voters", user.uid), {
-        uid: user.uid,
-        email: user.email,
-        isEligible: false, // Default to false, admin or other process to set true
-        isVerified: false, // Default to false, admin to verify
-        registeredAt: new Date().toISOString(),
+      // Create a document in MongoDB 'voters' collection
+      const mongoResponse = await fetch("/api/voters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+        }),
       });
+
+      if (!mongoResponse.ok) {
+        const errData = await mongoResponse.json();
+        throw new Error(errData.message || "Failed to register voter in database.");
+      }
+
+      // Create a document in Firestore 'voters' collection (resilient secondary storage)
+      try {
+        await setDoc(doc(db, "voters", user.uid), {
+          uid: user.uid,
+          email: user.email,
+          isEligible: false, 
+          isVerified: false, 
+          registeredAt: new Date().toISOString(),
+        });
+      } catch (fsError) {
+        console.warn("Firestore secondary sync failed, proceeding with MongoDB:", fsError);
+      }
 
       setSuccessMessage("Registration successful! Your account is pending verification. You can now log in.");
       toast({
@@ -71,7 +90,6 @@ export default function RegisterPage() {
         description: "Your account has been created and is pending verification. You can log in.",
       });
       form.reset();
-      // setTimeout(() => router.push('/login'), 2000); 
     } catch (error: any) {
       let errorMessage = "Registration failed. Please try again.";
       if (error instanceof FirebaseError) {

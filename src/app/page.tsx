@@ -51,8 +51,8 @@ async function getElections(): Promise<Election[] | { error: string }> {
             electionId: electionIdString,
           };
         }),
-        startDate: rest.startDate instanceof Date ? rest.startDate.toISOString() : rest.startDate,
-        endDate: rest.endDate instanceof Date ? rest.endDate.toISOString() : rest.endDate,
+        startDate: (rest.startDate as unknown) instanceof Date ? (rest.startDate as unknown as Date).toISOString() : (rest.startDate as string),
+        endDate: (rest.endDate as unknown) instanceof Date ? (rest.endDate as unknown as Date).toISOString() : (rest.endDate as string),
       };
     });
   } catch (e: any)  {

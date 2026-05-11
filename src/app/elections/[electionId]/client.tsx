@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Election, Candidate } from '@/lib/types';
 import { CandidateCard } from '@/components/CandidateCard';
+import { PlatformComparer } from '@/components/PlatformComparer';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth'; 
@@ -251,6 +252,12 @@ export function ElectionDetailClient({ initialElection }: ElectionDetailClientPr
         </Alert>
       )}
 
+
+      {election.candidates.length > 0 && (
+        <section className="mb-10">
+          <PlatformComparer candidates={election.candidates} />
+        </section>
+      )}
 
       <section>
         <h2 className="text-2xl font-headline font-semibold mb-6">Candidates</h2>

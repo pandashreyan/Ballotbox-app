@@ -37,7 +37,26 @@ export default function AdminCandidatesPage() {
   const [isLoadingCandidates, setIsLoadingCandidates] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({});
 
-  const db = getFirestore(app);
+  const fetchCandidates = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/candidates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch candidates from API.');
+      }
+      const data: CandidateDocument[] = await response.json();
+      
+      const unapproved = data.filter(c => c.isApproved === false);
+      const approved = data.filter(c => c.isApproved === true);
+      
+      setUnapprovedCandidates(unapproved);
+      setApprovedCandidates(approved);
+    } catch (error: any) {
+      console.error("Error fetching candidates:", error);
+      toast({ title: "Error", description: error.message || "Could not fetch candidates.", variant: "destructive" });
+    } finally {
+      setIsLoadingCandidates(false);
+    }
+  }, [toast]);
 
   React.useEffect(() => {
     if (isLoadingAuth) return;
@@ -47,41 +66,8 @@ export default function AdminCandidatesPage() {
     }
 
     setIsLoadingCandidates(true);
-    const candidatesCollectionRef = collection(db, "candidates");
-
-    const unapprovedQuery = query(candidatesCollectionRef, where("isApproved", "==", false), orderBy("email", "asc"));
-    const unsubscribeUnapproved = onSnapshot(unapprovedQuery, (querySnapshot) => {
-      const candidatesList: CandidateDocument[] = [];
-      querySnapshot.forEach((doc) => {
-        candidatesList.push({ id: doc.id, ...doc.data() } as CandidateDocument);
-      });
-      setUnapprovedCandidates(candidatesList);
-      setIsLoadingCandidates(false);
-    }, (error) => {
-      console.error("Error fetching unapproved candidates:", error);
-      toast({ title: "Error", description: "Could not fetch unapproved candidates. Firestore might require an index.", variant: "destructive" });
-      setIsLoadingCandidates(false);
-    });
-
-    const approvedQuery = query(candidatesCollectionRef, where("isApproved", "==", true), orderBy("email", "asc"));
-    const unsubscribeApproved = onSnapshot(approvedQuery, (querySnapshot) => {
-      const candidatesList: CandidateDocument[] = [];
-      querySnapshot.forEach((doc) => {
-        candidatesList.push({ id: doc.id, ...doc.data() } as CandidateDocument);
-      });
-      setApprovedCandidates(candidatesList);
-      setIsLoadingCandidates(false); 
-    }, (error) => {
-      console.error("Error fetching approved candidates:", error);
-      toast({ title: "Error", description: "Could not fetch approved candidates. Firestore might require an index.", variant: "destructive" });
-      setIsLoadingCandidates(false);
-    });
-
-    return () => {
-      unsubscribeUnapproved();
-      unsubscribeApproved();
-    };
-  }, [user, isLoadingAuth, router, toast, db]);
+    fetchCandidates();
+  }, [user, isLoadingAuth, router, fetchCandidates]);
 
   const handleApprovalAction = async (candidateId: string, action: 'approve' | 'revoke') => {
     setActionLoading(prev => ({ ...prev, [candidateId]: true }));
@@ -96,6 +82,7 @@ export default function AdminCandidatesPage() {
         throw new Error(result.message || failureMessage);
       }
       toast({ title: "Success", description: successMessage });
+      await fetchCandidates(); // Refresh the list
     } catch (error: any) {
       console.error(`Error performing ${action} action:`, error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -106,14 +93,21 @@ export default function AdminCandidatesPage() {
   
   const renderCandidateRow = (candidate: CandidateDocument, isApprovedList: boolean) => {
     let displayDob = 'N/A';
-    if (candidate.dob && typeof candidate.dob === 'string') {
+    if (candidate.dob) {
       try {
-        const date = new Date(candidate.dob);
-        if (isNaN(date.getTime())) { // Check if the date is an "Invalid Date"
+        let dateObj;
+        // Check if it's a Firestore Timestamp
+        if (typeof (candidate.dob as any).toDate === 'function') {
+          dateObj = (candidate.dob as any).toDate();
+        } else {
+          dateObj = new Date(candidate.dob as string);
+        }
+        
+        if (isNaN(dateObj.getTime())) { // Check if the date is an "Invalid Date"
           console.warn(`Invalid DOB string for candidate ${candidate.id}: ${candidate.dob}`);
           displayDob = 'Invalid Date';
         } else {
-          displayDob = format(date, 'PP');
+          displayDob = format(dateObj, 'PP');
         }
       } catch (e) {
         console.error(`Error formatting DOB for candidate ${candidate.id} ('${candidate.dob}'):`, e);

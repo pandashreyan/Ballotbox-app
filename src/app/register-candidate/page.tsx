@@ -77,18 +77,43 @@ export default function RegisterCandidatePage() {
       const userCredential = await createUserWithEmailAndPassword(firebaseAuth, data.email, data.password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, "candidates", user.uid), {
-        uid: user.uid,
-        email: data.email,
-        fullName: data.fullName,
-        dob: data.dob.toISOString().split('T')[0], 
-        nationalId: data.nationalId,
-        party: data.party,
-        manifesto: data.manifesto,
-        imageUrl: '', 
-        isApproved: false, 
-        isVerified: false, 
+      // Create a document in MongoDB 'candidates' collection
+      const mongoResponse = await fetch("/api/candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: data.email,
+          fullName: data.fullName,
+          dob: data.dob.toISOString().split('T')[0],
+          nationalId: data.nationalId,
+          party: data.party,
+          manifesto: data.manifesto,
+        }),
       });
+
+      if (!mongoResponse.ok) {
+        const errData = await mongoResponse.json();
+        throw new Error(errData.message || "Failed to submit candidate registration in database.");
+      }
+
+      // Create a document in Firestore (resilient secondary storage)
+      try {
+        await setDoc(doc(db, "candidates", user.uid), {
+          uid: user.uid,
+          email: data.email,
+          fullName: data.fullName,
+          dob: data.dob.toISOString().split('T')[0], 
+          nationalId: data.nationalId,
+          party: data.party,
+          manifesto: data.manifesto,
+          imageUrl: '', 
+          isApproved: false, 
+          isVerified: false, 
+        });
+      } catch (fsError) {
+        console.warn("Firestore secondary candidate sync failed, proceeding with MongoDB:", fsError);
+      }
 
       setSuccessMessage("Candidate registered successfully! Your application will be reviewed.");
       toast({

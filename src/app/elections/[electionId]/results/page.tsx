@@ -27,57 +27,32 @@ export default function ElectionResultsPage() {
       return;
     }
 
-    let isActive = true; // Flag to prevent state updates if component unmounts
+    setError(null);
+    const eventSource = new EventSource(`/api/elections/${electionId}/results/stream`);
 
-    const fetchElectionResults = async () => {
-      if (!isActive) return;
-      // Don't set isLoading to true on subsequent polls, only on initial load or error retry
-      // setIsLoading(true); // This would cause a flicker on polls
-      setError(null);
+    eventSource.onmessage = (event) => {
       try {
-        const response = await fetch(`/api/elections/${electionId}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Failed to fetch election data: ${response.status}`);
+        const data = JSON.parse(event.data);
+        if (data && data.results) {
+          setResultsData(data);
+          setError(null);
         }
-        const election: Election = await response.json();
-
-        const electionResults: ElectionResults = {
-          electionId: election.id,
-          electionName: election.name,
-          results: election.candidates.map(candidate => ({
-            candidateId: candidate.id,
-            candidateName: candidate.name,
-            voteCount: candidate.voteCount, 
-          })).sort((a,b) => b.voteCount - a.voteCount),
-        };
-        
-        if (isActive) {
-          setResultsData(electionResults);
-        }
-
-      } catch (err: any) {
-        console.error("Error fetching election results:", err);
-        if (isActive) {
-          setError(err.message || "Could not load election results.");
-          // Keep existing data if polling fails, unless it's the initial load
-          // setResultsData(null); 
-        }
+      } catch (err) {
+        console.error("Failed to parse SSE data:", err);
       } finally {
-        if (isActive && isLoading) { // Only set isLoading to false on initial load completion
-             setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    fetchElectionResults(); // Initial fetch
-    const intervalId = setInterval(fetchElectionResults, POLLING_INTERVAL);
+    eventSource.onerror = (err) => {
+      console.error("SSE connection error:", err);
+      setError("Lost connection to real-time updates. Attempting to reconnect...");
+    };
 
     return () => {
-      isActive = false;
-      clearInterval(intervalId);
+      eventSource.close();
     };
-  }, [electionId, isLoading]); // Added isLoading to dependency array to reset polling logic if initial load fails and user retries.
+  }, [electionId]); // Added isLoading to dependency array to reset polling logic if initial load fails and user retries.
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-8 w-8 text-primary" /> Loading results...</div>;

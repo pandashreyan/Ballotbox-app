@@ -98,13 +98,15 @@ export function ElectionCard({ election }: ElectionCardProps) {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!isClient) return; // Ensure window is available
     const electionUrl = `${window.location.origin}/elections/${election.id}`;
-    const shareText = `Check out the election: ${election.name} on BallotBox!`;
-    const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(electionUrl)}&text=${encodeURIComponent(shareText)}`;
-    window.open(twitterShareUrl, '_blank', 'noopener,noreferrer');
-    toast({ title: "Share on Twitter", description: "Opening Twitter in a new tab..." });
+    try {
+      await navigator.clipboard.writeText(electionUrl);
+      toast({ title: "Link Copied", description: "Election link copied to clipboard!" });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to copy link.", variant: "destructive" });
+    }
   };
 
   return (

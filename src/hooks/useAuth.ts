@@ -46,6 +46,30 @@ if (typeof window !== 'undefined' && !(window as any)._setMockUserRoleInitialize
 }
 
 
+async function fetchUserProfile(uid: string) {
+  try {
+    const voterRes = await fetch(`/api/voters/${uid}`);
+    if (voterRes.ok) {
+      const data = await voterRes.json();
+      return { role: 'voter' as UserRole, isEligible: data.isEligible === true, isVerified: data.isVerified === true };
+    }
+  } catch (err) {
+    console.warn("Voter profile API fetch failed:", err);
+  }
+
+  try {
+    const candidateRes = await fetch(`/api/candidates/${uid}`);
+    if (candidateRes.ok) {
+      const data = await candidateRes.json();
+      return { role: 'candidate' as UserRole, isEligible: data.isApproved === true && data.isVerified === true, isVerified: data.isVerified === true };
+    }
+  } catch (err) {
+    console.warn("Candidate profile API fetch failed:", err);
+  }
+
+  return null;
+}
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
@@ -64,7 +88,6 @@ export function useAuth() {
         name: 'Mock Candidate',
         role: 'candidate',
         email: 'candidate@example.com',
-        // isCandidateApproved: true, // Example if managing this locally
       });
     } else if (mockRole === 'voter') {
       setUser({
@@ -72,7 +95,7 @@ export function useAuth() {
         name: 'Mock Voter (No Firebase)',
         role: 'voter',
         email: 'mockvoter@example.com', 
-        isEligible: true, // For pure mock voter, assume eligible & verified
+        isEligible: true, 
         isVerified: true, 
       });
     } else {
@@ -93,27 +116,31 @@ export function useAuth() {
             let userRole: UserRole = 'voter'; // Default to voter if firebase user
             let isEligible = false;
             let isVerified = false;
-            // let isCandidateApproved = false;
 
-            // Check if user is in 'voters' collection
-            const voterDocRef = doc(db, "voters", firebaseUser.uid);
-            const voterDocSnap = await getDoc(voterDocRef);
-            if (voterDocSnap.exists()) {
-                const voterData = voterDocSnap.data();
-                isEligible = voterData.isEligible === true;
-                isVerified = voterData.isVerified === true;
-                userRole = 'voter'; 
+            const mongoProfile = await fetchUserProfile(firebaseUser.uid);
+            if (mongoProfile) {
+                userRole = mongoProfile.role;
+                isEligible = mongoProfile.isEligible;
+                isVerified = mongoProfile.isVerified;
             } else {
-                // Check if user is in 'candidates' collection (if they logged in via candidate flow)
-                const candidateDocRef = doc(db, "candidates", firebaseUser.uid);
-                const candidateDocSnap = await getDoc(candidateDocRef);
-                if (candidateDocSnap.exists()) {
-                    // const candidateData = candidateDocSnap.data();
-                    // isCandidateApproved = candidateData.isApproved === true; 
-                    userRole = 'candidate';
-                    // For candidates, eligibility/verification might be tied to their approval
-                    // isEligible = isCandidateApproved; 
-                    // isVerified = isCandidateApproved;
+                try {
+                  // Fallback to Firestore
+                  const voterDocRef = doc(db, "voters", firebaseUser.uid);
+                  const voterDocSnap = await getDoc(voterDocRef);
+                  if (voterDocSnap.exists()) {
+                      const voterData = voterDocSnap.data();
+                      isEligible = voterData.isEligible === true;
+                      isVerified = voterData.isVerified === true;
+                      userRole = 'voter'; 
+                  } else {
+                      const candidateDocRef = doc(db, "candidates", firebaseUser.uid);
+                      const candidateDocSnap = await getDoc(candidateDocRef);
+                      if (candidateDocSnap.exists()) {
+                          userRole = 'candidate';
+                      }
+                  }
+                } catch (fsErr) {
+                  console.warn("Firestore fallback lookup failed:", fsErr);
                 }
             }
             
@@ -124,7 +151,6 @@ export function useAuth() {
                 email: firebaseUser.email || undefined,
                 isEligible: isEligible,
                 isVerified: isVerified,
-                // isCandidateApproved: isCandidateApproved,
             });
         }
       } else {
@@ -143,26 +169,37 @@ export function useAuth() {
              if (mockRoleFromStorage === 'admin' || mockRoleFromStorage === 'candidate') {
                 updateUserFromMockRole(mockRoleFromStorage);
             } else { 
-                // Existing Firebase user implies 'voter' or 'candidate' based on Firestore
                 let userRole: UserRole = 'voter';
                 let isEligible = false;
                 let isVerified = false;
 
-                const voterDocRef = doc(db, "voters", currentFirebaseUser.uid);
-                const voterDocSnap = await getDoc(voterDocRef);
-                 if (voterDocSnap.exists()) {
-                    const voterData = voterDocSnap.data();
-                    isEligible = voterData.isEligible === true;
-                    isVerified = voterData.isVerified === true;
-                    userRole = 'voter';
+                const mongoProfile = await fetchUserProfile(currentFirebaseUser.uid);
+                if (mongoProfile) {
+                    userRole = mongoProfile.role;
+                    isEligible = mongoProfile.isEligible;
+                    isVerified = mongoProfile.isVerified;
                 } else {
-                    const candidateDocRef = doc(db, "candidates", currentFirebaseUser.uid);
-                    const candidateDocSnap = await getDoc(candidateDocRef);
-                    if (candidateDocSnap.exists()) {
-                        userRole = 'candidate';
+                    try {
+                      const voterDocRef = doc(db, "voters", currentFirebaseUser.uid);
+                      const voterDocSnap = await getDoc(voterDocRef);
+                      if (voterDocSnap.exists()) {
+                         const voterData = voterDocSnap.data();
+                         isEligible = voterData.isEligible === true;
+                         isVerified = voterData.isVerified === true;
+                         userRole = 'voter';
+                      } else {
+                         const candidateDocRef = doc(db, "candidates", currentFirebaseUser.uid);
+                         const candidateDocSnap = await getDoc(candidateDocRef);
+                         if (candidateDocSnap.exists()) {
+                             userRole = 'candidate';
+                         }
+                      }
+                    } catch (fsErr) {
+                      console.warn("Firestore fallback lookup failed:", fsErr);
                     }
                 }
-                 setUser({
+
+                setUser({
                     id: currentFirebaseUser.uid,
                     name: currentFirebaseUser.email || currentFirebaseUser.displayName || (userRole === 'voter' ? 'Voter' : 'Candidate'),
                     role: userRole,

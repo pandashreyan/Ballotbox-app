@@ -1,13 +1,8 @@
 
-// Import the functions you need from the SDKs you need
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore"; // Added
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeFirestore, type Firestore } from "firebase/firestore"; // Changed
 
 // Your web app's Firebase configuration
-// For a real production app, consider using environment variables for these values.
 const firebaseConfig = {
   apiKey: "AIzaSyDjdepGlm1aYly0n6MuxRkbJeyLVkY20Q4",
   authDomain: "ballotbox-cxs9h.firebaseapp.com",
@@ -24,16 +19,16 @@ let db: Firestore; // Added
 // Prevent re-initialization in development (HMR)
 if (typeof window !== 'undefined' && !(window as any)._firebaseAppInitialized) {
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app); // Added
+  db = initializeFirestore(app, { experimentalForceLongPolling: true }); // Changed
   (window as any)._firebaseAppInitialized = true;
 } else if (typeof window !== 'undefined' && (window as any)._firebaseAppInitialized) {
   // If already initialized, use the existing instance.
   app = initializeApp(firebaseConfig); // Firebase handles multiple init calls gracefully
-  db = getFirestore(app); // Added
+  db = initializeFirestore(app, { experimentalForceLongPolling: true }); // Changed
 } else {
     // For environments without window (e.g. during build for server components if not handled correctly)
     app = initializeApp(firebaseConfig);
-    db = getFirestore(app); // Added
+    db = initializeFirestore(app, { experimentalForceLongPolling: true }); // Changed
 }
 
 

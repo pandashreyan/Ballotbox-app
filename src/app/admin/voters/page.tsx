@@ -33,12 +33,28 @@ export default function AdminVotersPage() {
   const { user, isLoadingAuth } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [rawVoters, setRawVoters] = React.useState<VoterData[]>([]);
   const [voters, setVoters] = React.useState<VoterData[]>([]);
   const [isLoadingVoters, setIsLoadingVoters] = React.useState(true);
   const [isUpdating, setIsUpdating] = React.useState<Record<string, boolean>>({});
   const [filter, setFilter] = React.useState<VoterFilter>("all");
 
-  const db = getFirestore(app);
+  const fetchVoters = async () => {
+    setIsLoadingVoters(true);
+    try {
+      const response = await fetch('/api/voters');
+      if (!response.ok) {
+        throw new Error('Failed to fetch voters.');
+      }
+      const data = await response.json();
+      setRawVoters(data);
+    } catch (error: any) {
+      console.error("Error fetching voters:", error);
+      toast({ title: "Error", description: "Could not fetch voters list.", variant: "destructive" });
+    } finally {
+      setIsLoadingVoters(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isLoadingAuth) return;
@@ -46,52 +62,28 @@ export default function AdminVotersPage() {
       router.push('/'); 
       return;
     }
+    fetchVoters();
+  }, [user, isLoadingAuth, router]);
 
-    setIsLoadingVoters(true);
-    const votersCollectionRef = collection(db, "voters");
-    let q;
-
+  React.useEffect(() => {
+    let filtered = [...rawVoters];
     switch (filter) {
       case "eligible":
-        q = query(votersCollectionRef, where("isEligible", "==", true), orderBy("email"));
+        filtered = filtered.filter(v => v.isEligible === true);
         break;
       case "ineligible":
-        q = query(votersCollectionRef, where("isEligible", "==", false), orderBy("email"));
+        filtered = filtered.filter(v => v.isEligible === false);
         break;
       case "verified":
-        q = query(votersCollectionRef, where("isVerified", "==", true), orderBy("email"));
+        filtered = filtered.filter(v => v.isVerified === true);
         break;
       case "unverified":
-        q = query(votersCollectionRef, where("isVerified", "==", false), orderBy("email"));
+        filtered = filtered.filter(v => v.isVerified === false);
         break;
-      default: // "all"
-        q = query(votersCollectionRef, orderBy("email"));
     }
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const votersList: VoterData[] = [];
-      querySnapshot.forEach((doc) => {
-        // Ensure the data conforms to VoterData, especially for optional fields
-        const data = doc.data();
-        votersList.push({
-          id: doc.id,
-          uid: data.uid,
-          email: data.email,
-          isEligible: data.isEligible,
-          isVerified: data.isVerified,
-          registeredAt: data.registeredAt,
-        } as VoterData);
-      });
-      setVoters(votersList);
-      setIsLoadingVoters(false);
-    }, (error) => {
-      console.error("Error fetching voters:", error);
-      toast({ title: "Error", description: "Could not fetch voters list. Firestore might require an index for this query.", variant: "destructive" });
-      setIsLoadingVoters(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, isLoadingAuth, router, toast, db, filter]);
+    filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+    setVoters(filtered);
+  }, [rawVoters, filter]);
 
   const handleToggleVerification = async (voterId: string, currentStatus: boolean | undefined) => {
     setIsUpdating(prev => ({ ...prev, [voterId]: true }));
@@ -109,6 +101,7 @@ export default function AdminVotersPage() {
         title: "Success",
         description: `Voter verification status updated.`,
       });
+      await fetchVoters();
     } catch (error: any) {
       console.error("Error updating verification status:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -133,6 +126,7 @@ export default function AdminVotersPage() {
         title: "Success",
         description: `Voter eligibility status updated.`,
       });
+      await fetchVoters();
     } catch (error: any)      {
       console.error("Error updating eligibility status:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -178,7 +172,7 @@ export default function AdminVotersPage() {
         <CardContent>
           <div className="mb-4 max-w-xs">
             <Label htmlFor="voter-filter" className="mb-1 block text-sm font-medium">Filter Voters</Label>
-            <Select value={filter} onValueChange={(value) => setFilter(value as VoterFilter)}>
+            <Select value={filter} onValueChange={(value: string) => setFilter(value as VoterFilter)}>
               <SelectTrigger id="voter-filter">
                 <SelectValue placeholder="Select filter" />
               </SelectTrigger>
