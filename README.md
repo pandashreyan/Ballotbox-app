@@ -121,6 +121,7 @@ npm run genkit:watch
 \`\`\`
 
 App will be available at: [http://localhost:9002](http://localhost:9002)
+https://ballotbox-app-production.up.railway.app/
 
 ---
 
