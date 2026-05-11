@@ -12,206 +12,139 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-6-green?logo=mongodb)](https://www.mongodb.com/)
 [![Genkit](https://img.shields.io/badge/Genkit_AI-v1-brightgreen?logo=google-cloud)](https://firebase.google.com/docs/genkit)
 
+---
 
+> **BallotBox** is a premium, secure, and highly intelligent full-stack election management platform. It offers role-based interfaces for Admins, Candidates, and Voters with real-time updates, AI-powered election analytics, and automated platform comparisons. Built using cutting-edge technologies like **Next.js 15**, **Firebase**, **MongoDB**, and **Genkit + Gemini AI**, it empowers modern organizations to conduct digital elections with full transparency, scalable performance, and absolute trust.
 
 ---
 
-> **BallotBox** is a modern, secure, and intelligent full-stack election management system. It offers role-based interfaces for Admins, Candidates, and Voters with real-time updates, AI-powered insights, and seamless user experience. Built using cutting-edge technologies like **Next.js 15**, **Firebase**, **MongoDB**, and **Genkit + Gemini AI**, it empowers organizations to conduct digital elections with transparency, scalability, and trust.
+## 🚀 Key Premium Additions
+
+### 📊 1. Real-Time Live Results Dashboard (SSE Streaming)
+* **Election Night Atmosphere**: Results stream live as votes are cast—no page refreshes required!
+* **High Performance**: Built using **Server-Sent Events (SSE)** coupled with memory-optimized Node.js Event Emitters, ensuring minimal database load and instantaneous response times.
+* **Micro-Animations**: Real-time Recharts visualizations smoothly slide candidates' progress bars the moment a ballot register is committed.
+
+### 🤖 2. Side-by-Side Platform Comparer (AI Assistant)
+* **Comparative Platform Matrix**: Voters can select 2 or more candidates and click **"Compare Platforms"** to generate an automated, objective side-by-side matrix analyzing their manifestos in key policy sectors.
+* **Empowered Voters**: Uses Google Genkit to run structured Gemini LLM queries to produce clear, unbiased platform summaries.
+
+### 🛡️ 3. Bulletproof AI Fallback Engine (Zero-Downtime Design)
+* **Quota-Proof Resiliency**: Intercepts `429 Too Many Requests` API limits and connection timeouts gracefully.
+* **Smart Local Comparative Engine**: If Gemini limits are exceeded, a built-in fallback parser analyzes candidate profile manifestos locally to generate a clean, rich structured comparison matrix, ensuring zero-downtime voting guidance.
 
 ---
 
 ## 🚀 Features at a Glance
 
 ### 🌐 General
-- **Responsive Design** for mobile and desktop
-- **Dark/Light Mode** toggle
+- **Responsive Design** for flawless mobile and desktop viewports
+- **Sleek Dark/Light Mode** support
 - **Role-Based Access Control (RBAC)**
-- **Real-Time Data Sync** (Firestore listeners)
-- **Optimized Performance** with image/font loading
-- **Toasts & Feedback** for user actions
-- **Custom 404/500 Pages**
+- **Real-Time Data Sync** (Firestore listeners + SSE)
+- **High-Fidelity Animations** using Tailwind Animate & Framer Motion
+- **Toasts & Micro-Interactions** for instant feedback
 
 ### 🧠 AI Features (Genkit + Gemini)
 - **AI-Powered Manifesto Summarization**
-- **Election Help Chatbot** (FAQs, historical & contextual election data)
+- **Interactive Election Chatbot** (Contextual voter FAQs with rate-limit fallbacks)
+- **Side-by-Side Platform Matrix Comparer**
 
 ### 🛡️ Admin Panel
 - Create, manage, and delete **elections**
-- Approve or revoke **candidate** registrations
-- Manage **voter** status (verification, eligibility)
-- Filter/search through dynamic lists
-- View real-time updates via Firestore
+- Approve or revoke **candidate** applications
+- Control **voter** registration (verification, eligibility)
+- Real-time audit dashboard via Firestore
 
 ### 👤 Candidate Panel
-- Register a **detailed profile** (auth + form)
-- Apply for elections (MongoDB-linked)
-- **Vote** if eligible
+- Profile application form with image uploads
+- Live status checker for registration approvals
 
 ### 🗳️ Voter Panel
-- Sign up & login via **Firebase Authentication**
-- View upcoming, active, and past elections
-- Read candidate platforms + AI summaries
-- **Secure One-Time Voting** per election
-- Confirmation of vote submission
+- Secure **one-time voting** per election
+- Active results dashboard
+- Automated platform side-by-side comparison matrix
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Category        | Tech Used |
-|----------------|-----------|
-| Framework      | [Next.js 15](https://nextjs.org/) |
-| Frontend       | [React 18](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/) |
-| UI Components  | [ShadCN UI](https://ui.shadcn.com/), [Tailwind CSS](https://tailwindcss.com/) |
-| Forms & Validation | [React Hook Form](https://react-hook-form.com/), [Zod](https://zod.dev/) |
-| Auth           | [Firebase Auth (Email/Password)](https://firebase.google.com/docs/auth) |
-| Databases      | [MongoDB](https://www.mongodb.com/), [Firestore](https://firebase.google.com/docs/firestore) |
-| AI Integration | [Genkit](https://firebase.google.com/docs/genkit) + [Gemini AI](https://deepmind.google/discover/blog/google-gemini-ai/) |
-| Dev Tools      | ESLint, TypeScript, Turbopack, Firestore Emulator |
+| Category | Tech Used |
+|---|---|
+| **Framework** | [Next.js 15](https://nextjs.org/) (App Router) |
+| **Frontend** | [React 18](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/) |
+| **Styling & UI** | [ShadCN UI](https://ui.shadcn.com/), [Tailwind CSS](https://tailwindcss.com/) |
+| **Databases** | [MongoDB](https://www.mongodb.com/) (Collections), [Firestore](https://firebase.google.com/docs/firestore) (Live Auditing) |
+| **AI Engine** | [Google Genkit](https://firebase.google.com/docs/genkit) + [Gemini-2.0-Flash API](https://deepmind.google/discover/blog/google-gemini-ai/) |
+| **Server Events** | Server-Sent Events (SSE) + EventEmitters |
 
 ---
 
 ## 📦 Environment Setup
 
-Create a `.env` file in your root:
+Create a `.env.local` file in your root:
 
 \`\`\`env
-# MongoDB
-MONGODB_URI="your_mongo_connection"
-MONGODB_DB_NAME="ballotbox_db"
+# Gemini/Genkit
+GEMINI_API_KEY="your_gemini_api_key"
 
-# Firebase
-# Firebase client keys go in src/lib/firebase.ts
-# For Genkit AI use:
-GOOGLE_API_KEY="your_google_api_key"
+# MongoDB Connection
+MONGODB_URI="your_mongodb_srv_string"
+MONGODB_DB_NAME="ballotbox"
 
-# URLs
+# URL
 NEXT_PUBLIC_APP_URL="http://localhost:9002"
 \`\`\`
 
 ---
 
-## 🔧 Installation Guide
+## 🔧 Installation & Local Run
 
 \`\`\`bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/pandashreyan/Ballotbox-app.git
 cd Ballotbox-app
 
 # Install dependencies
 npm install
-# or
-yarn install
-\`\`\`
 
----
-
-## 🧪 Local Development
-
-### 1️⃣ Run the frontend (Next.js)
-\`\`\`bash
+# Start Next.js App Router
 npm run dev
 \`\`\`
 
-### 2️⃣ Run Genkit AI server
-\`\`\`bash
-npm run genkit:dev
-# Or with hot reload:
-npm run genkit:watch
-\`\`\`
-
-App will be available at: [http://localhost:9002](http://localhost:9002)
+The application will be live at: **[http://localhost:9002](http://localhost:9002)**
 
 ---
 
-## 🗄️ Database Setup
+## 🚀 Zero-Config Cloud Deployment
 
-### ✅ MongoDB
-- Update `.env` with connection string
-- Collections are auto-generated
+### Recommended Platforms:
+* **[Railway]** (Recommended for full-stack Next.js hosting with automated builders)
+* **[Vercel]** 
 
-### ✅ Firebase
-- Enable Firestore (Native Mode)
-- Enable Email/Password Auth
-- Add Firebase config to `src/lib/firebase.ts`
-- Configure **Firestore Security Rules** (⚠️ Production critical!)
-- Deploy `firestore.indexes.json` (or allow Firestore to auto-create)
-
----
-
-## 🔐 Authentication & Role Management
-
-| Role     | Auth Method               | Permissions |
-|----------|---------------------------|-------------|
-| Voter    | Firebase Auth             | Vote, view |
-| Candidate| Firebase Auth + Profile   | Register, vote |
-| Admin    | Mock login via dropdown   | Full control |
-
-ℹ️ Use the role switcher (top-right) during development to test multiple user flows.
-
----
-
-## 📜 Scripts Available
-
-\`\`\`bash
-npm run dev              # Start Next.js dev server
-npm run genkit:dev       # Start Genkit AI server
-npm run genkit:watch     # Genkit server with file watching
-npm run build            # Build Next.js app for production
-npm run start            # Start production server
-npm run lint             # Run ESLint
-npm run typecheck        # Run TypeScript checks
-\`\`\`
-
----
-
-## 🚀 Deployment Guide
-
-### Recommended Hosting:
-- [Vercel](https://vercel.com/)
-- [Netlify](https://www.netlify.com/)
-
-### Steps:
-1. Push repo to GitHub
-2. Connect to hosting platform
-3. Set environment variables (from `.env`)
-4. Set build command:
-   \`\`\`
-   npm run build
-   \`\`\`
-5. Output directory:  
-   \`\`\`
-   .next
-   \`\`\`
+### 🛡️ Built-In Deployment Safeguards Included:
+1. **Asynchronous Parameter Signatures**: Completely Next.js 15 compilant—all dynamic folder paths asynchronously await `params` as a `Promise` during tracing.
+2. **Dynamic Route Enforcement**: All dynamic API endpoints use `export const dynamic = 'force-dynamic'` to prevent pre-render build failures on Vercel/Railway.
+3. **Build-Time Database Safety**: The database client in `mongodb.ts` resolves mock promises during compile traces when env keys are absent in isolated cloud builders, resolving build-breaking trace exceptions.
 
 ---
 
 ## 🤝 Contributing
 
 Pull requests are welcome! 🙌  
-If you have ideas or spot issues, feel free to:
-
 - Fork this repo
-- Create your feature branch: \`git checkout -b feature/your-feature\`
-- Commit changes: \`git commit -m 'Add feature'\`
-- Push: \`git push origin feature/your-feature\`
-- Open a pull request!
+- Create your feature branch (\`git checkout -b feature/your-feature\`)
+- Commit your changes (\`git commit -m 'Add feature'\`)
+- Push (\`git push origin feature/your-feature\`)
+- Open a Pull Request!
 
 ---
 
 ## 📝 License
 
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).  
-Make sure to add a \`LICENSE.txt\` file to your project root.
-
----
-
-## 🌟 Acknowledgements
-
-Thanks to the open-source community, Google Firebase, MongoDB, and the creators of Genkit + Gemini for empowering developers to build intelligent systems with ease.More actions
 
 ---
 
 > Built with 💻 by [Shreyan Panda](https://github.com/pandashreyan)  
-> Let's make digital democracy smarter and more accessible.
-
+> Let's make digital democracy smarter, resilient, and more accessible.
