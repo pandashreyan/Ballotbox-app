@@ -5,6 +5,8 @@ import { ObjectId } from 'mongodb';
 import * as z from 'zod';
 import { globalEmitter } from '@/lib/events';
 
+export const dynamic = 'force-dynamic';
+
 const voteSchema = z.object({
   candidateId: z.string().min(1, { message: "Candidate ID is required." }),
 });

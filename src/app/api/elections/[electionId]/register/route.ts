@@ -4,6 +4,8 @@ import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import * as z from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const candidateRegistrationSchema = z.object({
   name: z.string().min(2, { message: "Candidate name must be at least 2 characters." }),
   platform: z.string().min(10, { message: "Platform summary must be at least 10 characters." }),

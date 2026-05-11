@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import * as z from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const verifySchema = z.object({
   isVerified: z.boolean(),
 });

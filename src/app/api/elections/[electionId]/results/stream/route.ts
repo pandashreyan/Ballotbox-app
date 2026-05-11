@@ -3,6 +3,8 @@ import { globalEmitter } from '@/lib/events';
 import clientPromise, { dbName } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ electionId: string }> }) {
   const { electionId } = await params;
 
